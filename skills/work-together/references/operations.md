@@ -8,7 +8,7 @@
 
 ```powershell
 powershell -NoProfile -File <skill绝对路径>/scripts/start-desktops.ps1 -Engine both
-node <skill绝对路径>/scripts/workflow.mjs doctor
+node <skill绝对路径>/scripts/workflow.mjs doctor zcode
 ```
 
 端口仅本机：ZCode=19331，WorkBuddy=19332。WorkBuddy 路径可用 `-WorkBuddyPath` 覆盖，ZCode 用 `-ZCodePath`。调试端口有本地应用控制能力，不转发、不暴露外网；使用后正常退出应用、普通方式重新打开即可关闭。脚本不强杀已运行应用。升级导致私有桥变化时 doctor/run 必须明确失败，先修适配，不继续假报成功。
@@ -35,6 +35,7 @@ $runner='C:/Users/你的用户名/.codex/skills/work-together/scripts/workflow.m
 Start-Process node -ArgumentList @($runner,'run','plan.json') -WorkingDirectory (Get-Location).Path -WindowStyle Hidden -RedirectStandardOutput '.work-together/runner.out.log' -RedirectStandardError '.work-together/runner.err.log'
 node $runner status
 node $runner watch
+node $runner open draft-a
 node $runner verify draft-a .work-together/draft-a.verification.md
 ```
 
@@ -42,7 +43,9 @@ node $runner verify draft-a .work-together/draft-a.verification.md
 
 ## 桌面查看与介入
 
-ZCode：打开相同项目目录，侧栏搜索 `[Codex/包ID]`，会话内查看消息、工具、待办和审批。WorkBuddy：空间 work-together（或项目目录名）下选择 `[Codex/包ID]`，会话内查看执行过程与待办。创建后列表可能异步刷新；点击对应空间或重开项目再查。前台只能展示一个会话，后台可同时执行。
+派发后脚本自动打开当前项目并选择对应任务，不再要求用户从旧项目里自行寻找。ZCode 使用当前安装的 ZCode.exe `--open-workspace <项目绝对路径>` 和真实会话导航状态；WorkBuddy 使用原生会话路由。侧栏应出现 `[Codex/包ID]`，正文应出现 `协作任务包：包ID`。两者都确认后记录 `.work-together/<包ID>.visibility.json`。未确认则明确报告，`verify` 会阻断；任务可能已在运行，不能为了显示问题重复派发。
+
+已有任务显示在错误项目、旧 smoke-zcode 会话或侧栏收起时，在**实际任务项目根目录**执行 `node <runner绝对路径> open <包ID>`。命令只打开已有会话，不发送新消息、不重建会话，不影响原调度进程。该项目必须已有 `.work-together/state.json` 和 sessionId。普通轮询不切屏，派发和首次 needs_user 自动定位；用户仍可在侧栏切换并行任务。
 
 权限/提问用桌面原生回答，调度器会继续轮询。不会自动绕过审批；主代理可对用户已明确授权且逐项核对一致的操作批准一次。介入卡只是状态概括，过期文件以 state.json 为准。执行结果只汇总简短文本；完整过程保留在各执行器会话与本地快照中。
 
@@ -57,4 +60,6 @@ node $runner run plan.json --resume
 
 依赖包等前置包 verified；Codex 尚未复核时 `run` 会继续驻留。`verify` 仅记录人工/主代理提供的证据路径，并不自动证明内容真实；主代理必须实际检查。运行前保存文件指纹，收口和验收时检测归属范围外的新增、修改和删除；发现后阻断验收，退出码为 2，不自动回退。这是事后检测，不是写入拦截。证据与运行日志放 `.work-together`，避免被当作执行包的越界写入。
 
-ZCode 使用 build 审批模式；WorkBuddy 沿用账号原生默认权限。共享工作日志/记忆需由 Codex 统一写，执行者不得写 `.workbuddy-ai/memory` 等共享文件。并发同目录不能隔离全局安装、端口、数据库、生成目录；计划者要避免这些冲突。首次启动的文件指纹会读取项目普通文件，大型目录的启动检查可能较慢。
+ZCode 默认 `mode=yolo`（完全访问）、`model=GLM-5.3-Flash`；每次发送都明确指定模型，且从当前桌面供应商目录检查其可用性。WorkBuddy 默认 `permissionMode=bypassPermissions`（允许完全访问），模型按本机 `wb.models.list()` 的 credits 动态选：优先零费率，若无则选最低已知费率并报告；Auto/空费率不能据此视为免费。零费率同档优先 Step-5-Preview、Deepseek-V4.1-Flash、Hy3，仅在列表显示该模型费率为零时适用。服务方计费信息可能变化，记录的是本次选择时的桌面报价，不保证永久免费。
+
+可在 plan.json 顶层明确覆盖 `model`、ZCode 的 `mode`、WorkBuddy 的 `permissionMode`。例如 ZCode 的 `{"engine":"zcode","model":"GLM-5.3-Flash","mode":"yolo",...}`。这些设置应用于新建协作会话，不修改所有项目的全局配置，不打断已有任务。共享工作日志/记忆需由 Codex 统一写，执行者不得写 `.workbuddy-ai/memory` 等共享文件。并发同目录不能隔离全局安装、端口、数据库、生成目录；计划者要避免这些冲突。首次启动的文件指纹会读取项目普通文件，大型目录的启动检查可能较慢。

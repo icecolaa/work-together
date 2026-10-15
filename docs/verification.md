@@ -30,3 +30,11 @@
 当前支持当前 Codex 回合内持续汇总，后台进程保留状态；Codex 回合结束后的自动唤醒需要宿主另外提供通知/自动化能力。待办在各执行器原生会话内显示，总计划在 PLAN.md 和 STATUS.md 更新，未实现 Codex 原生界面组件替换。取消、故障恢复提供了命令和持久会话 ID，但本轮没有对正在运行的真实模型任务做破坏性断线演练。
 
 远程入口：[GitHub](https://github.com/icecolaa/work-together)、[Gitee](https://gitee.com/ice-colaa/work-together)。GitHub 的初次 Git TLS 连接失败，切换为 Windows schannel 后成功；此设置仅写入本仓库 Git 配置。Gitee 不允许空仓库改为公开，首次推送后才设置公开并重新查询确认。
+
+## v0.2：桌面可见性与默认配置修复
+
+现场原因：后端创建/派发了真实会话，但桌面仍停留在旧 smoke 项目，原脚本没有导航项目与选中目标任务。现改为派发后自动打开真实项目和 session，检查选中状态及任务包正文标记，并保存独立 visibility.json；显示失败不重复发消息，需 open 修复，verify 会检查可见性证据。首次 needs_user 也会自动定位，普通轮询不抢用户当前选择。
+
+新增真实测试：ZCode 用 GLM-5.3-Flash、yolo 完成原生 Todo 和 result.md 写入；WorkBuddy 用模型列表标为 x0.00 的 Step-5-Preview、bypassPermissions 完成原生待办和相同写入。两份文件由 Codex 按字节检查为 VISIBLE_OK 加一个换行，归属外变更均为空。另验证 ZCode 新建空会话时即绑定 Flash 与完全访问，避免输入框沿用旧模型。模型初始化测试发现 Flash 必须显式附带 reasoningLevel，已沿用界面原有 max 设置；未在失败后擅自切换普通版模型。
+
+新增回归覆盖：旧 smoke 被选中不算新任务可见、正文未加载不能通过、项目/session/正文共同确认、已受理消息后的重命名错误不重复执行、创建时绑定模型配置、零费率优先和收费区域同名模型区分，共 16 项测试全部通过。WorkBuddy 首轮多写了一个 LF，Codex 严格验收发现后退回原 session，以独立请求 ID 发送修正，再次逐字节验收通过；避免复用首轮请求 ID 导致修正轮被缓存吞掉。截图与模型/权限快照仅保存在本地 `.local/proofs`。

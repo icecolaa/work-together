@@ -2,6 +2,10 @@
 
 Codex 负责 Spec / Plan / Verify，ZCode 或 WorkBuddy 负责 Exec。在同一目录按文件归属并行派发真实桌面会话，保留原生待办、审批与执行过程。
 
+v0.2 会在派发后自动打开真实项目、选中目标会话，并核对正文中的任务包标记；显示失败会阻断验收。已有任务可在其项目根目录运行 `node <skill路径>/scripts/workflow.mjs open <包ID>` 修复显示，无需重新派发。
+
+默认：ZCode 完全访问 + GLM-5.3-Flash；WorkBuddy 允许完全访问，按当前模型列表优先零费率模型。没有免费选项时明确报告最低已知费率。模型、权限和可见性证据均写入本地状态。
+
 - [可复制的中文提示词](prompts/ai-collaboration.md)
 - [Codex skill](skills/work-together/SKILL.md)
 - [启动、后台运行、恢复及验收](skills/work-together/references/operations.md)
