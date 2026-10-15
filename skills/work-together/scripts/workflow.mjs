@@ -35,9 +35,17 @@ async function main(){
     const file=path.resolve(evidence||'');if(!evidence||!fs.statSync(file).isFile()||!fs.readFileSync(file,'utf8').trim())throw Error('必须提供 Codex 独立验收证据文件');
     j.visibility=visible;
     fs.mkdirSync(path.join(dir,'controls'),{recursive:true});atomicJson(path.join(dir,'controls',id+'.json'),{action:'verified',evidence:file,visibility:visible});
-    // The runner owns state while alive; offline verification updates it directly.
-    let alive=false;try{process.kill(s.pid,0);alive=true;}catch{}
-    if(!alive){j.status='verified';j.evidence=file;atomicJson(stateFile,s);render(s);}console.log(`${id}: 已记录独立验收证据`);return;
+    // A process can remain alive after the runner released its lock. Wait for an
+    // acknowledgement or apply offline only after the writer has finished.
+    for(let attempt=0;attempt<21;attempt++){
+      const current=read(stateFile);
+      if(current.jobs[id].status==='verified'){console.log(`${id}: 已验收并记录证据`);return;}
+      const lockFile=path.join(dir,'runner.lock');let alive=false;
+      try{if(fs.existsSync(lockFile)){const owner=read(lockFile);process.kill(owner.pid,0);alive=true;}}catch{}
+      if(!alive){current.jobs[id].status='verified';current.jobs[id].evidence=file;current.jobs[id].visibility=visible;atomicJson(stateFile,current);render(current);console.log(`${id}: 已验收并记录证据`);return;}
+      await sleep(100);
+    }
+    console.log(`${id}: 验收证据已排队，等待调度器确认；用 status 查看结果`);return;
   }
   if(cmd==='cancel'){const s=read(stateFile),j=s.jobs[args[0]];if(!j?.sessionId)throw Error('未知会话');const d=await new Desktop(s.engine).connect();try{await d.cancel(root,j.sessionId);fs.mkdirSync(path.join(dir,'controls'),{recursive:true});atomicJson(path.join(dir,'controls',j.id+'.json'),{action:'cancel'});console.log('停止请求已送到原会话；请检查桌面最终状态');}finally{d.close();}return;}
   if(cmd!=='run'){console.log('用法：workflow.mjs doctor [zcode|workbuddy] | run <plan.json> | open <包ID> | status | watch | verify <包ID> <验收证据文件> | cancel <包ID>');return;}
