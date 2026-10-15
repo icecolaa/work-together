@@ -14,6 +14,8 @@
 | 桌面过程可见 | 通过 | ZCode smoke-zcode 项目、WorkBuddy smoke-workbuddy-v2 空间可见任务和执行过程；截图仅留本地 |
 | 归属外变更检查 | 通过 | 首轮 WorkBuddy 多写共享记忆，补约束和检测后重测，boundaryViolations=[] |
 | skill frontmatter 校验 | 通过 | 官方 quick_validate.py：Skill is valid! |
+| 本地安装 | 通过 | skill 复制至用户 .codex/skills/work-together，逐文件内容一致 |
+| 双远程 | 通过 | GitHub/Gitee 均公开，首轮 main 提交 SHA 与本地一致；origin 的 push 地址顺序为 Gitee、GitHub |
 
 本地原始证据位于 `.local/smoke-zcode/.work-together`、`.local/smoke-workbuddy-v2/.work-together` 和 `.local/proofs`，均被 Git 忽略。首轮 WorkBuddy 的共享记忆违规样本保留在 `.local/smoke-workbuddy`，未将该轮标为全部验收通过。最终两轮均由 Codex 记录 verified。
 
@@ -26,3 +28,5 @@
 [用户提供的微信文章](https://mp.weixin.qq.com/s/KeQmHzdWDY53cfDBZj81lA)在网页读取时失败，直接请求返回环境验证页，未取得正文，不能声称已从文章补齐功能。
 
 当前支持当前 Codex 回合内持续汇总，后台进程保留状态；Codex 回合结束后的自动唤醒需要宿主另外提供通知/自动化能力。待办在各执行器原生会话内显示，总计划在 PLAN.md 和 STATUS.md 更新，未实现 Codex 原生界面组件替换。取消、故障恢复提供了命令和持久会话 ID，但本轮没有对正在运行的真实模型任务做破坏性断线演练。
+
+远程入口：[GitHub](https://github.com/icecolaa/work-together)、[Gitee](https://gitee.com/ice-colaa/work-together)。GitHub 的初次 Git TLS 连接失败，切换为 Windows schannel 后成功；此设置仅写入本仓库 Git 配置。Gitee 不允许空仓库改为公开，首次推送后才设置公开并重新查询确认。
