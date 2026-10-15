@@ -1,0 +1,11 @@
+.local/
+.work-together/
+node_modules/
+*.log
+.env
+.env.*
+!.env.example
+artifacts/local/
+.workbuddy-ai/
+.zcode/
+.codebuddy/

@@ -1,0 +1,16 @@
+# work-together
+
+Codex 负责 Spec / Plan / Verify，ZCode 或 WorkBuddy 负责 Exec。在同一目录按文件归属并行派发真实桌面会话，保留原生待办、审批与执行过程。
+
+- [可复制的中文提示词](prompts/ai-collaboration.md)
+- [Codex skill](skills/work-together/SKILL.md)
+- [启动、后台运行、恢复及验收](skills/work-together/references/operations.md)
+- [现场验证记录](docs/verification.md)
+
+安装：把 `skills/work-together` 整个目录复制到 `~/.codex/skills/work-together`，重新打开 Codex 聊天后用 `$work-together` 调用。每轮在提示词里指定 `executor=zcode` 或 `executor=workbuddy`，在 plan.json 中填写同名 engine。
+
+需要 Node.js >=22，无 npm 依赖。`npm test` 运行调度关键约束测试。桌面适配使用版本相关的本机 CDP 私有桥，当前针对 ZCode 3.15.3 / WorkBuddy AI 5.7.6；升级需要重新检查。
+
+边界：文件归属是协作约定，不是沙箱。日志和会话在本地，主代理需保持当前回合跟进；单靠 skill 不能在 Codex 聊天结束后自动唤醒。桌面会话原生显示每包待办，总计划通过 PLAN.md / STATUS.md 同步，未修改 Codex 自身 UI。
+
+参考：[Codex 长任务的持久计划与验证](https://developers.openai.com/blog/run-long-horizon-tasks-with-codex)、[ZCode 官方文档](https://zcode.z.ai/cn/docs/welcome)、[WorkBuddy 官方文档](https://www.workbuddy.ai/docs/)。用户提供的[微信文章](https://mp.weixin.qq.com/s/KeQmHzdWDY53cfDBZj81lA)未能读取正文，未将推测内容计入实现。
