@@ -201,5 +201,15 @@ Invoke-WtTest 'WorkBuddy launch restores the port env when the app fails to star
   } finally { Remove-Item Env:WORKBUDDY_REMOTE_DEBUGGING_PORT -ErrorAction SilentlyContinue }
 }
 
+Invoke-WtTest 'mixed-engine plan protects only the matching desktop restart' {
+  $dir = New-WtRuntime '{"engine":"zcode","jobs":{"a":{"status":"running","engine":"workbuddy"}}}'
+  Push-Location $dir
+  try {
+    function Get-Process { param($Id,$ErrorAction) return [pscustomobject]@{Id=4321} }
+    Assert-WtTest (Test-WtActiveWorkflow -Engine 'workbuddy') 'workbuddy running job did not block its restart'
+    Assert-WtTest (-not (Test-WtActiveWorkflow -Engine 'zcode')) 'idle zcode engine blocked the restart'
+  } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force }
+}
+
 ConvertTo-Json -InputObject @($script:results.ToArray()) -Depth 4 -Compress
 if (@($script:results | Where-Object { -not $_.passed }).Count) { exit 1 }

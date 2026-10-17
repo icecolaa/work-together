@@ -15,7 +15,7 @@ node <skill绝对路径>/scripts/workflow.mjs doctor zcode
 
 若当前项目目录的调度记录显示该执行器仍有运行中任务，默认停止重启。用户明确要中断时可加 `-ForceRestart`，该参数也可用于重启已开启调试端口的实例。重启后先查询旧会话，按需要 `--resume`，不自动重派任务。`-GraceSeconds` 可调整正常退出等待时间，`-StartupTimeoutSeconds` 可调整启动超时。调试端口有本地应用控制能力，不转发、不暴露外网；使用后正常退出应用、普通方式重新打开即可关闭。升级导致私有桥变化时 doctor/run 必须明确失败，先修适配，不继续假报成功。
 
-`plan.json`（files 是相对根目录的文件或目录；不使用 glob）：
+`plan.json`（files 是相对根目录的文件或目录；不使用 glob；任务包可单独指定 `engine`，缺省用顶层 engine）：
 
 ```json
 {
@@ -24,10 +24,12 @@ node <skill绝对路径>/scripts/workflow.mjs doctor zcode
   "spec": "SPEC.md",
   "tasks": [
     {"id":"draft-a","title":"第一篇草稿","files":["drafts/a.md"],"dependsOn":[],"prompt":"按 Spec 写第一篇草稿，不发布。","acceptance":["文件非空，包含规定的十张图片引用"]},
-    {"id":"draft-b","title":"第二篇草稿","files":["drafts/b.md"],"dependsOn":[],"prompt":"按 Spec 写第二篇草稿，不发布。","acceptance":["文件非空，包含规定的十张图片引用"]}
+    {"id":"draft-b","title":"第二篇草稿","engine":"workbuddy","files":["drafts/b.md"],"dependsOn":[],"prompt":"按 Spec 写第二篇草稿，不发布。","acceptance":["文件非空，包含规定的十张图片引用"]}
   ]
 }
 ```
+
+调度器按各包 engine 连接对应桌面；`open`、`cancel` 和验收自动使用该包自己的执行器。两款工具同时参与时，不同执行器的包在同一目录同样受文件归属与并发约束；顶层 `model`/`mode`/`permissionMode` 会应用到所有参与的执行器，混排计划建议不设顶层 `model`，让两款工具各自使用默认模型。
 
 在项目根目录运行；脚本路径可以在已安装 skill 目录：
 

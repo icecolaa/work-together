@@ -44,3 +44,7 @@
 2026-10-17 在 Windows PowerShell 5.1 运行 `start-desktops.ps1 -Engine both`：ZCode 与 WorkBuddy 均从未开放调试端口的运行实例自动关闭窗口，等待后终止同一安装路径的剩余托盘进程，再重启并通过桌面页面就绪检测。重复运行时两者均直接复用，未再次重启。随后两个 doctor 均通过：ZCode 为 GLM-5.3-Flash/yolo，WorkBuddy 为列表零费率 Step-5-Preview/bypassPermissions。
 
 真实检测发现 Windows PowerShell 5.1 的 JSON 数组包装及 .NET Framework 对 file URL 查询参数的解析差异，已修复并加入回归。`npm test` 共 18 项通过，其中启动生命周期包含 11 个独立场景，覆盖健康复用、自动重启、托盘退出回退、按安装路径筛选、当前项目运行任务保护、显式强制重启、超时及页面身份检查；该组在 PowerShell 7 和 Windows PowerShell 5.1 均通过。skill 官方校验通过。运行任务保护与强制中断使用模拟测试，未中断真实模型任务；保护范围是启动脚本所在项目的协作记录。
+
+## v0.3：提示词选择协作组合与逐包混排
+
+2026-10-18：提示词/skill 支持 `executor=zcode|workbuddy|both`；plan.json 逐包可写 `engine`（顶层 engine 为缺省），调度器按包连接对应桌面并分别解析模型策略，`open`/`cancel`/验收按各包执行器路由，启动保护改为按任务级引擎判断（旧 state 无逐包引擎时回退顶层 engine）。自动化测试覆盖逐包 engine 校验（合法/非法值）与混排计划的启动保护（workbuddy 包运行中只阻断 workbuddy 重启、不误伤 zcode），共 19 项测试在 PowerShell 7 与 5.1 双通道通过。**两款工具同时参与的真实现场派发验收尚未进行**；完成前不宣称双执行器协作已在现场可用，现有单引擎计划的命令与状态文件格式保持兼容。

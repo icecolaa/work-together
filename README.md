@@ -8,12 +8,14 @@ v0.2 会在派发后自动打开真实项目、选中目标会话，并核对正
 
 v0.2.1 启动脚本自动退出并重启未开启调试端口的应用，无需手动退出托盘。已有可用实例直接复用；当前项目有运行中协作任务时保护现场，明确需要中断时使用 `-ForceRestart`。
 
+v0.3 支持在提示词里选择协作组合：`executor=zcode`、`workbuddy` 或 `both`。plan.json 顶层 engine 为缺省执行器，个别包可用同名 engine 字段改派另一款工具，调度器按包连接对应桌面，`open`/`cancel`/验收自动使用各包自己的执行器。
+
 - [可复制的中文提示词](prompts/ai-collaboration.md)
 - [Codex skill](skills/work-together/SKILL.md)
 - [启动、后台运行、恢复及验收](skills/work-together/references/operations.md)
 - [现场验证记录](docs/verification.md)
 
-安装：把 `skills/work-together` 整个目录复制到 `~/.codex/skills/work-together`，重新打开 Codex 聊天后用 `$work-together` 调用。每轮在提示词里指定 `executor=zcode` 或 `executor=workbuddy`，在 plan.json 中填写同名 engine。
+安装：把 `skills/work-together` 整个目录复制到 `~/.codex/skills/work-together`，重新打开 Codex 聊天后用 `$work-together` 调用。每轮在提示词里指定 `executor=zcode`、`workbuddy` 或 `both`；plan.json 顶层 engine 为缺省执行器，个别包可用同名 engine 字段改派另一款工具。
 
 需要 Node.js >=22，无 npm 依赖。`npm test` 运行调度关键约束测试。桌面适配使用版本相关的本机 CDP 私有桥，当前针对 ZCode 3.15.3 / WorkBuddy AI 5.7.6；升级需要重新检查。
 

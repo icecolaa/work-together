@@ -40,9 +40,14 @@ function Test-WtActiveWorkflow {
   } catch {
     throw "无法读取 .work-together 调度状态，为保护可能仍在运行的任务，未重启。确认无运行中任务后再用 -ForceRestart 重启。"
   }
-  if ($state.engine -ne $Engine) { return $false }
-  $active = @('running', 'needs_user', 'unknown', 'creating', 'dispatching')
-  return @($state.jobs.PSObject.Properties.Value | Where-Object { $_.status -in $active }).Count -gt 0
+  # Protect the restart when any active job belongs to this engine; older
+  # states without per-job engines fall back to the plan-level engine.
+  $active = @($state.jobs.PSObject.Properties.Value | Where-Object { $_.status -in @('running', 'needs_user', 'unknown', 'creating', 'dispatching') })
+  return @($active | Where-Object {
+    $jobEngine = $_.engine
+    if (-not $jobEngine) { $jobEngine = $state.engine }
+    $jobEngine -eq $Engine
+  }).Count -gt 0
 }
 
 function Stop-WtDesktop {
