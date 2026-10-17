@@ -6,6 +6,8 @@ v0.2 会在派发后自动打开真实项目、选中目标会话，并核对正
 
 默认：ZCode 完全访问 + GLM-5.3-Flash；WorkBuddy 允许完全访问，按当前模型列表优先零费率模型。没有免费选项时明确报告最低已知费率。模型、权限和可见性证据均写入本地状态。
 
+v0.2.1 启动脚本自动退出并重启未开启调试端口的应用，无需手动退出托盘。已有可用实例直接复用；当前项目有运行中协作任务时保护现场，明确需要中断时使用 `-ForceRestart`。
+
 - [可复制的中文提示词](prompts/ai-collaboration.md)
 - [Codex skill](skills/work-together/SKILL.md)
 - [启动、后台运行、恢复及验收](skills/work-together/references/operations.md)

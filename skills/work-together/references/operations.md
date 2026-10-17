@@ -4,14 +4,16 @@
 
 ## 开始
 
-从应用托盘正常退出未开启调试端口的实例，再执行：
+直接执行启动脚本，无需先手动退出托盘里的应用：
 
 ```powershell
 powershell -NoProfile -File <skill绝对路径>/scripts/start-desktops.ps1 -Engine both
 node <skill绝对路径>/scripts/workflow.mjs doctor zcode
 ```
 
-端口仅本机：ZCode=19331，WorkBuddy=19332。WorkBuddy 路径可用 `-WorkBuddyPath` 覆盖，ZCode 用 `-ZCodePath`。调试端口有本地应用控制能力，不转发、不暴露外网；使用后正常退出应用、普通方式重新打开即可关闭。脚本不强杀已运行应用。升级导致私有桥变化时 doctor/run 必须明确失败，先修适配，不继续假报成功。
+端口仅本机：ZCode=19331，WorkBuddy=19332。WorkBuddy 路径可用 `-WorkBuddyPath` 覆盖，ZCode 用 `-ZCodePath`。已经开启调试端口的实例直接复用；未开启端口的实例由脚本先关闭窗口，等待默认 5 秒，托盘或后台进程仍未退出时自动终止同一安装路径的剩余进程，再重新启动并等待桌面会话就绪。应用配置、账号与本地会话文件保留。脚本只关闭所选执行器，不要求用户逐次手动退出。
+
+若当前项目目录的调度记录显示该执行器仍有运行中任务，默认停止重启。用户明确要中断时可加 `-ForceRestart`，该参数也可用于重启已开启调试端口的实例。重启后先查询旧会话，按需要 `--resume`，不自动重派任务。`-GraceSeconds` 可调整正常退出等待时间，`-StartupTimeoutSeconds` 可调整启动超时。调试端口有本地应用控制能力，不转发、不暴露外网；使用后正常退出应用、普通方式重新打开即可关闭。升级导致私有桥变化时 doctor/run 必须明确失败，先修适配，不继续假报成功。
 
 `plan.json`（files 是相对根目录的文件或目录；不使用 glob）：
 

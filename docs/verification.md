@@ -38,3 +38,9 @@
 新增真实测试：ZCode 用 GLM-5.3-Flash、yolo 完成原生 Todo 和 result.md 写入；WorkBuddy 用模型列表标为 x0.00 的 Step-5-Preview、bypassPermissions 完成原生待办和相同写入。两份文件由 Codex 按字节检查为 VISIBLE_OK 加一个换行，归属外变更均为空。另验证 ZCode 新建空会话时即绑定 Flash 与完全访问，避免输入框沿用旧模型。模型初始化测试发现 Flash 必须显式附带 reasoningLevel，已沿用界面原有 max 设置；未在失败后擅自切换普通版模型。
 
 新增回归覆盖：旧 smoke 被选中不算新任务可见、正文未加载不能通过、项目/session/正文共同确认、已受理消息后的重命名错误不重复执行、创建时绑定模型配置、零费率优先和收费区域同名模型区分、调度器退出时验收落盘的竞争，共 17 项测试全部通过。WorkBuddy 首轮多写了一个 LF，Codex 严格验收发现后退回原 session，以独立请求 ID 发送修正，再次逐字节验收通过；避免复用首轮请求 ID 导致修正轮被缓存吞掉。截图与模型/权限快照仅保存在本地 `.local/proofs`。
+
+## v0.2.1：自动退出并重启桌面应用
+
+2026-10-17 在 Windows PowerShell 5.1 运行 `start-desktops.ps1 -Engine both`：ZCode 与 WorkBuddy 均从未开放调试端口的运行实例自动关闭窗口，等待后终止同一安装路径的剩余托盘进程，再重启并通过桌面页面就绪检测。重复运行时两者均直接复用，未再次重启。随后两个 doctor 均通过：ZCode 为 GLM-5.3-Flash/yolo，WorkBuddy 为列表零费率 Step-5-Preview/bypassPermissions。
+
+真实检测发现 Windows PowerShell 5.1 的 JSON 数组包装及 .NET Framework 对 file URL 查询参数的解析差异，已修复并加入回归。`npm test` 共 18 项通过，其中启动生命周期包含 11 个独立场景，覆盖健康复用、自动重启、托盘退出回退、按安装路径筛选、当前项目运行任务保护、显式强制重启、超时及页面身份检查；该组在 PowerShell 7 和 Windows PowerShell 5.1 均通过。skill 官方校验通过。运行任务保护与强制中断使用模拟测试，未中断真实模型任务；保护范围是启动脚本所在项目的协作记录。
