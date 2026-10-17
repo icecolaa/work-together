@@ -13,12 +13,13 @@ node <skill绝对路径>/scripts/workflow.mjs doctor zcode
 
 端口仅本机：ZCode=19331，WorkBuddy=19332。WorkBuddy 路径可用 `-WorkBuddyPath` 覆盖，ZCode 用 `-ZCodePath`。已经开启调试端口的实例直接复用；未开启端口的实例由脚本先关闭窗口，等待默认 5 秒，托盘或后台进程仍未退出时自动终止同一安装路径的剩余进程，再重新启动并等待桌面会话就绪。应用配置、账号与本地会话文件保留。脚本只关闭所选执行器，不要求用户逐次手动退出。
 
-若当前项目目录的调度记录显示该执行器仍有运行中任务，默认停止重启。用户明确要中断时可加 `-ForceRestart`，该参数也可用于重启已开启调试端口的实例。重启后先查询旧会话，按需要 `--resume`，不自动重派任务。`-GraceSeconds` 可调整正常退出等待时间，`-StartupTimeoutSeconds` 可调整启动超时。调试端口有本地应用控制能力，不转发、不暴露外网；使用后正常退出应用、普通方式重新打开即可关闭。升级导致私有桥变化时 doctor/run 必须明确失败，先修适配，不继续假报成功。
+若当前项目目录的调度记录显示该执行器仍有运行中任务，或该执行器正是当前主持方且调度器仍持锁，默认停止重启。用户明确要中断时可加 `-ForceRestart`，该参数也可用于重启已开启调试端口的实例。重启后先查询旧会话，按需要 `--resume`，不自动重派任务。`-GraceSeconds` 可调整正常退出等待时间，`-StartupTimeoutSeconds` 可调整启动超时。调试端口有本地应用控制能力，不转发、不暴露外网；使用后正常退出应用、普通方式重新打开即可关闭。升级导致私有桥变化时 doctor/run 必须明确失败，先修适配，不继续假报成功。
 
 `plan.json`（files 是相对根目录的文件或目录；不使用 glob；任务包可单独指定 `engine`，缺省用顶层 engine）：
 
 ```json
 {
+  "coordinator": "codex",
   "engine": "zcode",
   "concurrency": 2,
   "spec": "SPEC.md",
@@ -29,7 +30,7 @@ node <skill绝对路径>/scripts/workflow.mjs doctor zcode
 }
 ```
 
-调度器按各包 engine 连接对应桌面；`open`、`cancel` 和验收自动使用该包自己的执行器。两款工具同时参与时，不同执行器的包在同一目录同样受文件归属与并发约束；顶层 `model`/`mode`/`permissionMode` 会应用到所有参与的执行器，混排计划建议不设顶层 `model`，让两款工具各自使用默认模型。
+顶层 `coordinator`（codex|zcode|workbuddy，缺省 codex）声明主持方——运行本 skill、负责 Spec/Plan/Verify 的聊天所在的工具；调度器拒绝 engine 与主持方相同的任务包，Exec 必须指派其他工具。主持方自身的桌面无需调试端口，只有执行器桌面需要。调度器按各包 engine 连接对应桌面；`open`、`cancel` 和验收自动使用该包自己的执行器。多款工具同时参与时，不同执行器的包在同一目录同样受文件归属与并发约束；顶层 `model`/`mode`/`permissionMode` 会应用到所有参与的执行器，混排计划建议不设顶层 `model`，让各工具使用默认模型。
 
 在项目根目录运行；脚本路径可以在已安装 skill 目录：
 
@@ -43,7 +44,7 @@ node $runner open draft-a
 node $runner verify draft-a .work-together/draft-a.verification.md
 ```
 
-含空格的参数在 PowerShell Start-Process 中需显式加双引号；推荐使用绝对无空格 runner 路径或由调用方正确引用。状态文件 `.work-together/state.json`，简洁看板 `STATUS.md`，每包日志 `<id>.jsonl`，介入卡 `<id>.review.md`。不要将该目录推送远程。`watch` 在当前工具调用存续时实时输出变化；宿主需持续读取才能自动带回当前 Codex 会话。
+含空格的参数在 PowerShell Start-Process 中需显式加双引号；推荐使用绝对无空格 runner 路径或由调用方正确引用。状态文件 `.work-together/state.json`，简洁看板 `STATUS.md`，每包日志 `<id>.jsonl`，介入卡 `<id>.review.md`。不要将该目录推送远程。`watch` 在当前工具调用存续时实时输出变化；宿主需持续读取才能自动带回当前主持会话。
 
 ## 桌面查看与介入
 
@@ -62,7 +63,7 @@ node $runner run plan.json --resume
 
 同目录只允许一个调度器；意外退出保留锁，`--resume` 先确认旧进程已退出并复用已有 sessionId。创建/派发期间失联结果可能未知，缺少会话 ID 时必须到桌面查找，不得再创建一份。调度器不删除原会话、不做 git reset、不清理用户修改。每轮新任务先把 `.work-together` 归档到用户指定位置，再新建状态。回退使用开始前的 diff/备份，只处理该包拥有的文件。
 
-依赖包等前置包 verified；Codex 尚未复核时 `run` 会继续驻留。`verify` 仅记录人工/主代理提供的证据路径，并不自动证明内容真实；主代理必须实际检查。运行前保存文件指纹，收口和验收时检测归属范围外的新增、修改和删除；发现后阻断验收，退出码为 2，不自动回退。这是事后检测，不是写入拦截。证据与运行日志放 `.work-together`，避免被当作执行包的越界写入。
+依赖包等前置包 verified；主持方尚未复核时 `run` 会继续驻留。`verify` 仅记录人工/主代理提供的证据路径，并不自动证明内容真实；主代理必须实际检查。运行前保存文件指纹，收口和验收时检测归属范围外的新增、修改和删除；发现后阻断验收，退出码为 2，不自动回退。这是事后检测，不是写入拦截。证据与运行日志放 `.work-together`，避免被当作执行包的越界写入。
 
 ZCode 默认 `mode=yolo`（完全访问）、`model=GLM-5.3-Flash`；每次发送都明确指定模型，且从当前桌面供应商目录检查其可用性。WorkBuddy 默认 `permissionMode=bypassPermissions`（允许完全访问），模型按本机 `wb.models.list()` 的 credits 动态选：优先零费率，若无则选最低已知费率并报告；Auto/空费率不能据此视为免费。零费率同档优先 Step-5-Preview、Deepseek-V4.1-Flash、Hy3，仅在列表显示该模型费率为零时适用。服务方计费信息可能变化，记录的是本次选择时的桌面报价，不保证永久免费。
 

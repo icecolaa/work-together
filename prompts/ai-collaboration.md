@@ -1,12 +1,13 @@
-## 1. Codex 主导的桌面 AI 协作工作流
+## 1. AI 协作工作流：主持方规划验收，其他工具桌面执行
 
-**适用场景**：任务可拆成独立验收包，希望 Codex 负责规划与验证，指定 ZCode、WorkBuddy 或两者同时在同一项目目录后台执行，并能从桌面查看过程。
+**适用场景**：任务可拆成独立验收包，由当前聊天所在的 AI（Codex、ZCode 或 WorkBuddy）负责规划与验证，指派其他工具的桌面会话在同一项目目录后台执行，并能从桌面查看过程。
 
 **提示词：**
 
-请使用 $work-together 完成本次任务。
+请调用 work-together skill 完成本次任务（Codex 里用 `$work-together`；ZCode、WorkBuddy 按各自的技能调用方式）。
 
-执行器：{zcode、workbuddy 或 both，开始前指定，本轮不可擅自替换；both 表示两款工具同时参与，在 plan.json 逐包写 engine}
+主持方：{当前聊天所在的工具，写入 plan.json 的 coordinator，缺省 codex}
+执行器：{zcode、workbuddy 或 both，必须不含主持方自身，开始前指定，本轮不可擅自替换；both 表示全部可指派工具同时参与，在 plan.json 逐包写 engine}
 共享项目目录：{绝对路径}
 目标：{本次要完成什么}
 输入：{现有文件、资料和必要上下文}

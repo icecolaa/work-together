@@ -13,8 +13,8 @@
 
 ## 二、当前状态快照（2026-10-18 更新）
 
-- 分支 `main`，与远程同步；最新提交见 git log（v0.3：提示词选择协作组合与逐包混排）。
-- `npm test`：**19 项全部通过**（Node 测试 + PowerShell 启动场景，PS7 与 PS5.1 双通道验证）。
+- 分支 `main`，与远程同步；最新提交见 git log（v0.4：主持方可为 ZCode/WorkBuddy，Exec 指派其他工具）。
+- `npm test`：**20 项全部通过**（Node 测试 + PowerShell 启动场景，PS7 与 PS5.1 双通道验证）。
 - `PLAN.md` 所有验收项已勾选完毕，SPEC.md 交付合同已全部满足。
 - 本地证据（不入库，被 .gitignore 忽略）：`.local/proofs/`（截图、模型/权限快照）、`.local/smoke-zcode/`、`.local/smoke-workbuddy-v2/` 的 `.work-together` 调度记录、`.local/installed-skill-before-v02/`（旧版备份）。
 - 环境依赖：Windows、Node.js >=22（实测 v26.5.1）、已登录的 ZCode 3.15.3 / WorkBuddy AI 5.7.6 桌面端。**适配绑定版本相关的私有桌面桥，任一应用升级后必须重新核对**。
@@ -27,7 +27,8 @@
 4. **f89b294（10-15）v0.2**：修复"后端派发了真实会话但桌面停在旧项目"——派发后自动打开真实项目并选中目标 session，核对侧栏选中 + 正文任务包标记，写 `visibility.json`；显示失败阻断验收，用 `open <包ID>` 修复而非重派。同时固化默认模型策略：ZCode=GLM-5.3-Flash+yolo（创建会话即绑定，含 reasoningLevel=max）；WorkBuddy=按 `wb.models.list()` 动态选零费率模型（Step-5-Preview）+bypassPermissions。新增 model-policy.mjs 与可见性回归，共 17 项测试通过。
 5. **a884a53（10-15）**：修复调度器退出后独立验收状态未落盘的竞态。
 6. **c82e829（10-17）v0.2.1**：启动脚本自动退出并重启未开调试端口的桌面应用（新增 `desktop-lifecycle.ps1`，123 行），健康实例直接复用；当前项目有运行中任务时保护现场，需 `-ForceRestart` 才中断。修掉 Windows PowerShell 5.1 的 JSON 数组包装与 .NET Framework file URL 查询参数解析差异；新增 11 场景启动测试（PS7 与 PS5.1 双环境通过）。
-7. **10-18 review 修复 + v0.3**：先修复 review 发现的三处问题（WorkBuddy 路径回退被跳过、调度状态不可读时保护崩掉、缺 url 页面打断桥检测）并补 7 个启动场景；随后实现 v0.3——提示词 `executor=zcode|workbuddy|both`，plan.json 逐包 `engine` 字段（顶层为缺省），调度器按包连接对应桌面并分别解析模型策略，`open`/`cancel`/验收按各包执行器路由，启动保护按任务级引擎判断。**注意：两款工具同时参与的真实现场派发验收尚未做**（见 docs/verification.md v0.3 节）。
+7. **10-18 review 修复 + v0.3**：先修复 review 发现的三处问题（WorkBuddy 路径回退被跳过、调度状态不可读时保护崩掉、缺 url 页面打断桥检测）并补 7 个启动场景；随后实现 v0.3——提示词 `executor=zcode|workbuddy|both`，plan.json 逐包 `engine` 字段（顶层为缺省），调度器按包连接对应桌面并分别解析模型策略，`open`/`cancel`/验收按各包执行器路由，启动保护按任务级引擎判断。
+8. **10-18 v0.4**：主持方不再固定为 Codex——plan.json 顶层 `coordinator`（codex|zcode|workbuddy，缺省 codex）声明主持方，调度器**拒绝 engine 与主持方相同的包**（Exec 必须指派其他工具）；会话标题/派发提示词用主持方名称，恢复校验含主持方一致性，STATUS.md 显示主持方；主持方应用在调度器持锁期间受启动保护。**现场缺口：混排（双执行器）与主持方=ZCode/WorkBuddy 的完整现场流程均未验证**（见 docs/verification.md v0.3/v0.4 节）。
 
 ## 四、关键结论（工作原理速查）
 
@@ -50,7 +51,7 @@
 
 ## 六、下一步计划（候选）
 
-1. **混排现场验收**：写一个 zcode+workbuddy 各一包的 plan，在真实桌面完整跑通 `run → open → verify`，补 docs/verification.md 证据——这是 v0.3 唯一缺口。
+1. **混排与多主持方现场验收**：跑一个 zcode+workbuddy 混排 plan，并完整走一次"ZCode 或 WorkBuddy 聊天作主持方、派发给另一工具"的流程，补 docs/verification.md 证据——这是 v0.3/v0.4 的共同缺口。
 2. **升级适配巡检**：ZCode / WorkBuddy 任一发布新版本后重跑 `doctor` 与测试，必要时修桌面桥。
 3. **真实故障演练**：对运行中的真实任务做一次 cancel/失联恢复演练（此前仅命令级验证），补 `docs/verification.md`。
 4. **跨回合自动汇报**：调研宿主侧通知/自动化能力（如系统计划任务触发），补上"Codex 回合结束后自动唤醒"这块已知空白。

@@ -1,9 +1,9 @@
 ---
 name: work-together
-description: 让 Codex 规划并验证，由用户指定的 ZCode 或 WorkBuddy 桌面会话在同一工作目录并行执行独立任务包，跟踪待办、人工介入和验收证据。
+description: 由主持方（当前聊天的 AI：Codex、ZCode 或 WorkBuddy）规划并独立验收，指派其他工具的桌面会话在同一工作目录并行执行独立任务包，跟踪待办、人工介入和验收证据。
 ---
 
-你负责 Spec、Plan 和独立 Verify；所选外部桌面执行器负责 Exec。任务开始时读取用户的 `executor=zcode|workbuddy|both`，未指定时询问，不擅自切换。`both` 表示两款工具同时参与：plan.json 顶层 `engine` 仍是缺省执行器，需要另一款工具的包逐包写 `engine` 字段，并在汇报中说明每个包由谁执行。简单任务优先单包；仅文件归属和依赖允许时并行。
+你是主持方，负责 Spec、Plan 和独立 Verify；Exec 指派给**其他工具**的桌面会话。主持方就是你当前所在的聊天：plan.json 顶层写 `coordinator`（codex|zcode|workbuddy，缺省 codex）声明，调度器会拒绝 engine 与主持方相同的任务包。任务开始时读取用户的 `executor=zcode|workbuddy|both`（均指主持方之外的工具），未指定时询问，不擅自切换。`both` 表示全部可指派工具同时参与：plan.json 顶层 `engine` 是缺省执行器，个别包可逐包写 `engine` 字段，并在汇报中说明每个包由谁执行。简单任务优先单包；仅文件归属和依赖允许时并行。
 
 此用户的默认值：ZCode 使用**完全访问（yolo）和 GLM-5.3-Flash**；WorkBuddy 使用**允许完全访问（bypassPermissions），优先当前模型列表费率为零的工具调用模型**。脚本动态读取费率；空费率和 Auto 不代表免费。无零费率模型时选最低已知费率并在汇报中说明，用户指定模型则以该次指定为准。ZCode 指定模型不可用就明确失败。完全访问只决定工具审批方式，仍须遵守本次 Spec 和用户授权范围。
 
@@ -13,8 +13,8 @@ description: 让 Codex 规划并验证，由用户指定的 ZCode 或 WorkBuddy 
 2. 写 `PLAN.md` 及 `plan.json`：每包有唯一 id、prompt、files、acceptance、dependsOn；默认 concurrency=2。执行器默认整轮统一（顶层 engine），个别包可用 `engine` 字段改派另一款工具实现两款并行；不同执行器的包在同一目录同样受文件归属约束。依赖包必须经 Codex 验收才可启动。目录归属覆盖子目录，交叠包由调度器串行；共享构建输出、依赖安装、Git index、锁文件也要分配唯一写入责任。
 3. 读 [运行说明](references/operations.md)，使用本 skill 的脚本连接**真实桌面会话**。先 `doctor <执行器>`；桌面登录不代表 API 或 CLI 已登录。派发后必须打开本次真实项目和目标 session，检查侧栏选中正确任务、正文出现本次任务包标记，并记录 `<包ID>.visibility.json`。仅有 sessionId、后台日志或旧测试会话截图不算桌面执行过程可见。脚本会自动定位，失败用 `open <包ID>` 修复原会话，禁止重新派发。接口不可用时报告缺口，不伪造会话、不直接写桌面数据库、不自动替换其他执行器。首次本地调试适配需说明它是版本相关的私有桌面桥。
 4. 用隐藏后台进程运行 `workflow.mjs run <plan.json>`，工作目录为项目根；stdout/stderr 重定向到 `.work-together` 或用户指定本地日志路径。工具会话返回的后台进程不等于永久驻留服务。主聊天仅报告状态变化、交付结果和人工决策；详细快照在本地 JSONL，不粘贴大段日志。
-5. 使用当前 Codex 环境真实提供的计划工具（若有）同步任务；没有则维护 PLAN.md 的勾选项。定期读紧凑 status/watch，主会话在本轮保持跟进，独立工作完成后再收尾。skill 本身不能在 Codex 回合结束后主动唤醒聊天：只有配置了可用的宿主通知机制才能承诺跨回合自动汇报。
-6. 状态包括 queued、running、needs_user、exec_done、verified、failed、unknown、blocked、cancelled。needs_user 时自动定位该会话并给出简短回顾卡：完成了什么、卡在哪里、具体需回答什么、项目绝对路径、会话标题/ID、下一步。普通轮询不抢用户当前选中的会话。通过执行器原生待办维护本包进度，不把 Codex 的总计划假称为外部工具原生全局计划。后台其他无依赖包可继续。
+5. 使用当前主持环境真实提供的计划工具（若有）同步任务；没有则维护 PLAN.md 的勾选项。定期读紧凑 status/watch，主会话在本轮保持跟进，独立工作完成后再收尾。skill 本身不能在主持方回合结束后主动唤醒聊天：只有配置了可用的宿主通知机制才能承诺跨回合自动汇报。
+6. 状态包括 queued、running、needs_user、exec_done、verified、failed、unknown、blocked、cancelled。needs_user 时自动定位该会话并给出简短回顾卡：完成了什么、卡在哪里、具体需回答什么、项目绝对路径、会话标题/ID、下一步。普通轮询不抢用户当前选中的会话。通过执行器原生待办维护本包进度，不把主持方的总计划假称为外部工具原生全局计划。后台其他无依赖包可继续。
 7. 完全访问是用户已指定的默认权限，无需重复询问。业务问题或超出 Spec 的新操作仍需用户判断。若用户本轮改为审批模式，已有明确授权且与 Spec 完全相符的操作可批准一次。失联/超时先查原会话，unknown 不重派；取消后确认停止再释放文件归属。恢复复用持久会话 ID。
 8. Exec 结束仅记 exec_done。你逐项读取真实产物、检查 diff、独立运行适合改动的测试，必要时看截图/控制台/应用后台状态，证据映射到 Spec 条件。失败退回原会话修复。将独立验收记录交给 `verify` 命令；不能仅凭执行者“通过”结案。所有包 verified 后交付，更新 PLAN.md 并给出简洁总报告。
 

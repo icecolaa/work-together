@@ -48,3 +48,7 @@
 ## v0.3：提示词选择协作组合与逐包混排
 
 2026-10-18：提示词/skill 支持 `executor=zcode|workbuddy|both`；plan.json 逐包可写 `engine`（顶层 engine 为缺省），调度器按包连接对应桌面并分别解析模型策略，`open`/`cancel`/验收按各包执行器路由，启动保护改为按任务级引擎判断（旧 state 无逐包引擎时回退顶层 engine）。自动化测试覆盖逐包 engine 校验（合法/非法值）与混排计划的启动保护（workbuddy 包运行中只阻断 workbuddy 重启、不误伤 zcode），共 19 项测试在 PowerShell 7 与 5.1 双通道通过。**两款工具同时参与的真实现场派发验收尚未进行**；完成前不宣称双执行器协作已在现场可用，现有单引擎计划的命令与状态文件格式保持兼容。
+
+## v0.4：主持方可为 ZCode 或 WorkBuddy
+
+2026-10-18：plan.json 顶层 `coordinator`（codex|zcode|workbuddy，缺省 codex）声明主持方——运行 skill、负责 Spec/Plan/Verify 的聊天所在的工具。调度器拒绝 engine 与主持方相同的任务包（Exec 必须指派其他工具），会话标题与派发提示词改用主持方名称，恢复校验加入主持方一致性，STATUS.md 显示主持方。启动保护新增主持方规则：主持方为 ZCode/WorkBuddy 且调度器持锁时该应用不可被自动重启（重启会杀死主持会话与调度器），执行器应用仍按任务级引擎与活跃状态判断。自动化测试覆盖 coordinator 校验（自指派被拒、跨工具合法、缺省 codex）与主持方应用保护（驻留期仍保护主持方、不误保护无活跃任务的执行器），共 20 项测试在 PowerShell 7 与 5.1 双通道通过。**主持方为 ZCode/WorkBuddy 的完整现场流程（在其聊天内运行 skill 并派发给另一工具）尚未验证**；Codex 主持路径行为不变，旧 state 缺 coordinator 时按 codex 处理。

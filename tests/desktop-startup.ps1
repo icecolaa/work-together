@@ -211,5 +211,15 @@ Invoke-WtTest 'mixed-engine plan protects only the matching desktop restart' {
   } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force }
 }
 
+Invoke-WtTest 'coordinator app is protected while its scheduler holds the lock' {
+  $dir = New-WtRuntime '{"engine":"workbuddy","coordinator":"zcode","jobs":{"a":{"status":"exec_done","engine":"workbuddy"}}}'
+  Push-Location $dir
+  try {
+    function Get-Process { param($Id,$ErrorAction) return [pscustomobject]@{Id=4321} }
+    Assert-WtTest (Test-WtActiveWorkflow -Engine 'zcode') 'coordinator app was not protected'
+    Assert-WtTest (-not (Test-WtActiveWorkflow -Engine 'workbuddy')) 'executor app was blocked without active jobs'
+  } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force }
+}
+
 ConvertTo-Json -InputObject @($script:results.ToArray()) -Depth 4 -Compress
 if (@($script:results | Where-Object { -not $_.passed }).Count) { exit 1 }

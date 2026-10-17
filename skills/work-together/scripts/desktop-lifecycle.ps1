@@ -40,6 +40,13 @@ function Test-WtActiveWorkflow {
   } catch {
     throw "无法读取 .work-together 调度状态，为保护可能仍在运行的任务，未重启。确认无运行中任务后再用 -ForceRestart 重启。"
   }
+  # The coordinator app hosts the scheduler process itself: while its lock is
+  # alive, restarting that app would kill the coordination, so protect it
+  # regardless of job statuses. Older states without a coordinator fall back
+  # to codex, which start-desktops never restarts.
+  $coordinator = $state.coordinator
+  if (-not $coordinator) { $coordinator = 'codex' }
+  if ($coordinator -eq $Engine) { return $true }
   # Protect the restart when any active job belongs to this engine; older
   # states without per-job engines fall back to the plan-level engine.
   $active = @($state.jobs.PSObject.Properties.Value | Where-Object { $_.status -in @('running', 'needs_user', 'unknown', 'creating', 'dispatching') })

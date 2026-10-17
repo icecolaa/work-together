@@ -18,8 +18,8 @@ function render(state) {
   const jobs=Object.values(state.jobs),used=[...new Set(jobs.map(j=>j.engine).filter(Boolean))],mixed=used.length>1;
   const engineLabel=used.length>1?`${used.join(' + ')}（默认 ${state.engine}）`:used[0]||state.engine;
   const cols=['包','状态',...(mixed?['引擎']:[]),'桌面显示已确认','桌面会话'];
-  const lines=['# 协作进度','',`执行器：${engineLabel} · 更新：${new Date().toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}`,`模型与权限：${JSON.stringify(state.modelPolicy||{})}`,'',`| ${cols.join(' | ')} |`,'|'+cols.map(()=>'---').join('|')+'|',...jobs.map(j=>`| ${j.id} | ${j.status} | ${mixed?`${j.engine||state.engine} | `:''}${j.visibility?.confirmed?'是':'未确认'} | ${j.sessionId||'待派发'} |`)];
-  lines.push('','exec_done = 执行者交回，待 Codex 独立验收。needs_user = 到对应桌面会话处理权限/问题。');
+  const lines=['# 协作进度','',`主持方：${state.coordinator||'codex'} · 执行器：${engineLabel} · 更新：${new Date().toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}`,`模型与权限：${JSON.stringify(state.modelPolicy||{})}`,'',`| ${cols.join(' | ')} |`,'|'+cols.map(()=>'---').join('|')+'|',...jobs.map(j=>`| ${j.id} | ${j.status} | ${mixed?`${j.engine||state.engine} | `:''}${j.visibility?.confirmed?'是':'未确认'} | ${j.sessionId||'待派发'} |`)];
+  lines.push('','exec_done = 执行者交回，待主持方独立验收。needs_user = 到对应桌面会话处理权限/问题。');
   if(state.boundaryViolations?.length)lines.push('',`验收阻断：发现归属清单外的变更：${state.boundaryViolations.join('、')}。需主代理查明来源与修复。`);
   fs.writeFileSync(path.join(dir,'STATUS.md'),lines.join('\n')+'\n');
   for(const j of Object.values(state.jobs).filter(j=>['needs_user','failed','unknown'].includes(j.status)))fs.writeFileSync(path.join(dir,j.id+'.review.md'),`# 本轮回顾：${j.id}\n\n状态：${j.status}\n\n会话：${j.sessionId}\n\n已完成：${j.summary||'见会话过程'}\n\n需要介入：${j.error||JSON.stringify(j.pending||[]).slice(0,2000)}\n\n下一步：处理后继续查询原会话，不重新派发。\n`);
@@ -35,7 +35,7 @@ async function main(){
     if(!visible?.confirmed||visible.sessionId!==j.sessionId||visible.workspace!==root)throw Error('尚未确认目标桌面会话可见；先执行 open '+id+'，核对执行过程后再验收');
     const currentViolations=s.baseline?boundaryChanges(s.baseline,fingerprint(root),read(s.planFile).tasks,root):s.boundaryViolations;
     if(currentViolations?.length)throw Error('存在归属清单外变更，必须先修复或重新明确 Spec：'+currentViolations.join(', '));
-    const file=path.resolve(evidence||'');if(!evidence||!fs.statSync(file).isFile()||!fs.readFileSync(file,'utf8').trim())throw Error('必须提供 Codex 独立验收证据文件');
+    const file=path.resolve(evidence||'');if(!evidence||!fs.statSync(file).isFile()||!fs.readFileSync(file,'utf8').trim())throw Error('必须提供主持方独立验收证据文件');
     j.visibility=visible;
     fs.mkdirSync(path.join(dir,'controls'),{recursive:true});atomicJson(path.join(dir,'controls',id+'.json'),{action:'verified',evidence:file,visibility:visible});
     // A process can remain alive after the runner released its lock. Wait for an
@@ -57,8 +57,8 @@ async function main(){
   fs.mkdirSync(dir,{recursive:true});fs.mkdirSync(path.join(dir,'controls'),{recursive:true});
   const lock=path.join(dir,'runner.lock');
   if(fs.existsSync(lock)){const old=read(lock);let alive=false;try{process.kill(old.pid,0);alive=true;}catch{}if(alive)throw Error(`调度器 ${old.pid} 正在运行`);if(!args.includes('--resume'))throw Error('发现旧锁，请检查原桌面会话后用 run <plan> --resume 查询恢复');fs.unlinkSync(lock);}
-  let state=fs.existsSync(stateFile)&&args.includes('--resume')?read(stateFile):{engine:plan.engine,planFile,jobs:Object.fromEntries(plan.tasks.map(t=>[t.id,{id:t.id,status:'queued',engine:t.engine||plan.engine}]))};
-  if(state.engine!==plan.engine||state.planFile!==planFile)throw Error('恢复时必须使用原 plan 和 engine');
+  let state=fs.existsSync(stateFile)&&args.includes('--resume')?read(stateFile):{engine:plan.engine,coordinator:plan.coordinator,planFile,jobs:Object.fromEntries(plan.tasks.map(t=>[t.id,{id:t.id,status:'queued',engine:t.engine||plan.engine}]))};
+  if(state.engine!==plan.engine||state.planFile!==planFile||(state.coordinator||'codex')!==plan.coordinator)throw Error('恢复时必须使用原 plan、engine 和主持方');
   if(state.planHash&&state.planHash!==planHash)throw Error('计划在运行后发生变化；恢复前须核对原计划，不允许静默更换文件归属或依赖');
   for(const t of plan.tasks)if(state.jobs[t.id])state.jobs[t.id].engine??=t.engine||plan.engine;
   state.planHash=planHash;
@@ -67,6 +67,7 @@ async function main(){
   state.pid=process.pid;const lockFd=fs.openSync(lock,'wx');try{fs.writeFileSync(lockFd,JSON.stringify({pid:process.pid}));}finally{fs.closeSync(lockFd);}
   state.baseline??=fingerprint(root);
   const engines=[...new Set(plan.tasks.map(t=>t.engine||plan.engine))];
+  const hostLabel={codex:'Codex',zcode:'ZCode',workbuddy:'WorkBuddy'}[plan.coordinator]||plan.coordinator;
   const desktops={},getDesktop=engine=>desktops[engine]??(desktops[engine]=new Desktop(engine,undefined,{model:plan.model,mode:plan.mode,permissionMode:plan.permissionMode})),desktopFor=j=>getDesktop(j.engine||state.engine);
   let clean=false;
   const save=()=>{state.updatedAt=new Date().toISOString();atomicJson(stateFile,state);render(state);};
@@ -87,8 +88,8 @@ async function main(){
         if(!(task.dependsOn||[]).every(id=>state.jobs[id].status==='verified'))continue;
         const active=plan.tasks.filter(t=>['running','needs_user','unknown'].includes(state.jobs[t.id].status));
         if(active.length>=plan.concurrency||!canStart(task,active,root))continue;
-        try{const d=desktopFor(j);j.status='creating';save();j.sessionId=await d.create(root,`[Codex/${task.id}] ${task.title||task.id}`);j.status='dispatching';save();
-          const prompt=`协作任务包：${task.id}\n你是执行者，Codex 负责 Spec、Plan 和独立 Verify。工作目录：${root}\n先读 ${path.join(root,plan.spec||'SPEC.md')}。\n只修改归属文件/目录：${task.files.join('、')}。同目录还有其他执行者，禁止改动其他路径、Git index、提交、推送、发布、安装全局依赖或回退他人文件。特别禁止写 .workbuddy-ai/memory、MEMORY.md 或其他共享工作日志：本包不落盘记忆；需要记忆时在最终回复交给 Codex 统一整理。文件归属是协作约定，不是操作系统沙箱。\n任务：${task.prompt}\n验收条件：${task.acceptance.join('；')}\n用原生待办工具维护本包进度。现场与计划不符时在边界内判断；超出边界先提问。遇到需用户决定的问题用桌面原生提问/审批，等待回答。结束只交回：变更路径、结果、测试命令/退出码、证据路径、已知问题、下一步。不得把自测称为 Codex 验收通过。`;
+        try{const d=desktopFor(j);j.status='creating';save();j.sessionId=await d.create(root,`[${hostLabel}/${task.id}] ${task.title||task.id}`);j.status='dispatching';save();
+          const prompt=`协作任务包：${task.id}\n你是执行者，${hostLabel}（主持方）负责 Spec、Plan 和独立 Verify。工作目录：${root}\n先读 ${path.join(root,plan.spec||'SPEC.md')}。\n只修改归属文件/目录：${task.files.join('、')}。同目录还有其他执行者，禁止改动其他路径、Git index、提交、推送、发布、安装全局依赖或回退他人文件。特别禁止写 .workbuddy-ai/memory、MEMORY.md 或其他共享工作日志：本包不落盘记忆；需要记忆时在最终回复交给主持方统一整理。文件归属是协作约定，不是操作系统沙箱。\n任务：${task.prompt}\n验收条件：${task.acceptance.join('；')}\n用原生待办工具维护本包进度。现场与计划不符时在边界内判断；超出边界先提问。遇到需用户决定的问题用桌面原生提问/审批，等待回答。结束只交回：变更路径、结果、测试命令/退出码、证据路径、已知问题、下一步。不得把自测称为主持方验收通过。`;
           j.requestId=`wt-${j.id}-${randomUUID()}`;save();await d.send(root,j.sessionId,prompt,j.requestId);j.status='running';j.startedAt=Date.now();save();
           await showJob(d,j,`协作任务包：${task.id}`);save();
           if(!j.visibility.confirmed)console.log(`${j.id}: 任务已提交，桌面显示未确认；请 open ${j.id}，不要重新派发。`);
