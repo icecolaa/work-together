@@ -11,7 +11,7 @@ $ErrorActionPreference='Stop'
 if (-not $ZCodePath) { $ZCodePath = "$env:LOCALAPPDATA/Programs/ZCode/ZCode.exe" }
 if (-not $WorkBuddyPath) {
   $running = Get-Process WorkBuddyAI -ErrorAction SilentlyContinue | Select-Object -First 1
-  if ($running) { $WorkBuddyPath = $running.Path }
+  if ($running -and $running.Path) { $WorkBuddyPath = $running.Path }
   elseif (Test-Path 'E:/workbuddy/WorkBuddyAI/WorkBuddyAI.exe') { $WorkBuddyPath='E:/workbuddy/WorkBuddyAI/WorkBuddyAI.exe' }
 }
 foreach ($name in @('zcode','workbuddy')) {

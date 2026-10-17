@@ -16,7 +16,7 @@ function Test-WtDebugBridge {
     $pages = Invoke-RestMethod "http://127.0.0.1:$Port/json/list" -TimeoutSec 2
     $resourceRoot = (Join-Path (Split-Path $ExecutablePath -Parent) 'resources') + [IO.Path]::DirectorySeparatorChar
     foreach ($page in $pages) {
-      if ($page.type -ne 'page' -or -not $page.url.StartsWith('file:')) { continue }
+      if ($page.type -ne 'page' -or -not $page.url -or -not $page.url.StartsWith('file:')) { continue }
       # .NET Framework treats file URL queries as part of LocalPath; strip the
       # URL query/fragment before decoding to keep PowerShell 5.1 compatible.
       $fileUrl = ($page.url -split '[?#]', 2)[0]
@@ -32,9 +32,14 @@ function Test-WtActiveWorkflow {
   $runtimeDir = Join-Path (Get-Location).Path '.work-together'
   $lockFile = Join-Path $runtimeDir 'runner.lock'
   if (-not (Test-Path -LiteralPath $lockFile)) { return $false }
-  $owner = Get-Content -LiteralPath $lockFile -Raw | ConvertFrom-Json
-  if (-not (Get-Process -Id $owner.pid -ErrorAction SilentlyContinue)) { return $false }
-  $state = Get-Content -LiteralPath (Join-Path $runtimeDir 'state.json') -Raw | ConvertFrom-Json
+  try {
+    $owner = Get-Content -LiteralPath $lockFile -Raw -ErrorAction Stop | ConvertFrom-Json
+    if (-not $owner.pid) { return $false }
+    if (-not (Get-Process -Id $owner.pid -ErrorAction SilentlyContinue)) { return $false }
+    $state = Get-Content -LiteralPath (Join-Path $runtimeDir 'state.json') -Raw -ErrorAction Stop | ConvertFrom-Json
+  } catch {
+    throw "无法读取 .work-together 调度状态，为保护可能仍在运行的任务，未重启。确认无运行中任务后再用 -ForceRestart 重启。"
+  }
   if ($state.engine -ne $Engine) { return $false }
   $active = @('running', 'needs_user', 'unknown', 'creating', 'dispatching')
   return @($state.jobs.PSObject.Properties.Value | Where-Object { $_.status -in $active }).Count -gt 0

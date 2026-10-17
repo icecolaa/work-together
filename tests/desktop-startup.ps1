@@ -127,5 +127,79 @@ Invoke-WtTest 'startup timeout is reported instead of claiming readiness' {
   Assert-WtTest $caught 'startup timeout was not reported'
 }
 
+function New-WtRuntime {
+  param([string]$StateJson)
+  $dir = Join-Path ([IO.Path]::GetTempPath()) ('wt-lifecycle-' + [guid]::NewGuid().ToString('N'))
+  $runtime = Join-Path $dir '.work-together'
+  New-Item -ItemType Directory -Force $runtime | Out-Null
+  Set-Content -LiteralPath (Join-Path $runtime 'runner.lock') -Value '{"pid":4321}'
+  Set-Content -LiteralPath (Join-Path $runtime 'state.json') -Value $StateJson
+  return $dir
+}
+
+Invoke-WtTest 'alive scheduler with a running job blocks the restart' {
+  $dir = New-WtRuntime '{"engine":"zcode","jobs":{"a":{"status":"running"}}}'
+  Push-Location $dir
+  try {
+    function Get-Process { param($Id,$ErrorAction) return [pscustomobject]@{Id=4321} }
+    Assert-WtTest (Test-WtActiveWorkflow -Engine 'zcode') 'running job did not block the restart'
+  } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force }
+}
+
+Invoke-WtTest 'dead scheduler lock does not block the restart' {
+  $dir = New-WtRuntime '{"engine":"zcode","jobs":{"a":{"status":"running"}}}'
+  Push-Location $dir
+  try {
+    function Get-Process { param($Id,$ErrorAction) }
+    Assert-WtTest (-not (Test-WtActiveWorkflow -Engine 'zcode')) 'dead lock owner blocked the restart'
+  } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force }
+}
+
+Invoke-WtTest 'scheduler for another engine does not block the restart' {
+  $dir = New-WtRuntime '{"engine":"workbuddy","jobs":{"a":{"status":"running"}}}'
+  Push-Location $dir
+  try {
+    function Get-Process { param($Id,$ErrorAction) return [pscustomobject]@{Id=4321} }
+    Assert-WtTest (-not (Test-WtActiveWorkflow -Engine 'zcode')) 'engine mismatch blocked the restart'
+  } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force }
+}
+
+Invoke-WtTest 'queued-only jobs do not block the restart' {
+  $dir = New-WtRuntime '{"engine":"zcode","jobs":{"a":{"status":"queued"}}}'
+  Push-Location $dir
+  try {
+    function Get-Process { param($Id,$ErrorAction) return [pscustomobject]@{Id=4321} }
+    Assert-WtTest (-not (Test-WtActiveWorkflow -Engine 'zcode')) 'queued job blocked the restart'
+  } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force }
+}
+
+Invoke-WtTest 'unreadable scheduler state fails closed with restart guidance' {
+  $dir = New-WtRuntime 'not-json{{'
+  Push-Location $dir
+  try {
+    function Get-Process { param($Id,$ErrorAction) return [pscustomobject]@{Id=4321} }
+    $caught = $false
+    try { $null = Test-WtActiveWorkflow -Engine 'zcode' } catch { $caught = $_.Exception.Message.Contains('-ForceRestart') }
+    Assert-WtTest $caught 'unreadable state did not fail closed with guidance'
+  } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force }
+}
+
+Invoke-WtTest 'ZCode launch passes the debug port arguments' {
+  $script:launchArgs = $null
+  function Start-Process { param($FilePath,$ArgumentList,$WindowStyle) $script:launchArgs = @($ArgumentList) }
+  Invoke-WtDesktopLaunch -Engine 'zcode' -ExecutablePath $script:target -Port 19331
+  Assert-WtTest ($script:launchArgs.Contains('--remote-debugging-port=19331') -and $script:launchArgs.Contains('--remote-debugging-address=127.0.0.1')) 'debug arguments missing'
+}
+
+Invoke-WtTest 'WorkBuddy launch restores the port env when the app fails to start' {
+  $env:WORKBUDDY_REMOTE_DEBUGGING_PORT = 'keep-me'
+  try {
+    function Start-Process { param($FilePath,$WindowStyle) throw 'simulated launch failure' }
+    $caught = $false
+    try { Invoke-WtDesktopLaunch -Engine 'workbuddy' -ExecutablePath $script:target -Port 19332 } catch { $caught = $true }
+    Assert-WtTest ($caught -and $env:WORKBUDDY_REMOTE_DEBUGGING_PORT -eq 'keep-me') 'env var was not restored'
+  } finally { Remove-Item Env:WORKBUDDY_REMOTE_DEBUGGING_PORT -ErrorAction SilentlyContinue }
+}
+
 ConvertTo-Json -InputObject @($script:results.ToArray()) -Depth 4 -Compress
 if (@($script:results | Where-Object { -not $_.passed }).Count) { exit 1 }

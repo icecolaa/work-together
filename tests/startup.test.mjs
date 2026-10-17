@@ -11,6 +11,6 @@ test('Windows 启动生命周期：复用、自动重启、退出回退、运行
   const shell=process.env.WT_TEST_POWERSHELL || (fs.existsSync(bundled)?bundled:'powershell.exe');
   const output=execFileSync(shell,['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(root,'tests/desktop-startup.ps1'),'-LifecyclePath',path.join(root,'skills/work-together/scripts/desktop-lifecycle.ps1')],{encoding:'utf8',timeout:15000});
   const results=JSON.parse(output.replace(/^\uFEFF/,''));
-  assert.equal(results.length,11);
+  assert.equal(results.length,18);
   assert.deepEqual(results.filter(r=>!r.passed),[]);
 });
