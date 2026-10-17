@@ -26,7 +26,7 @@ function render(state) {
 }
 async function main(){
   if(cmd==='doctor') { const engines=args[0]?[args[0]]:['zcode','workbuddy'];for(const engine of engines){if(!['zcode','workbuddy'].includes(engine))throw Error('未知执行器');const d=new Desktop(engine);try{await d.connect();console.log(`${engine}: desktop bridge OK; ${JSON.stringify(await d.resolveModel())}`);}catch(e){console.log(`${engine}: ${e.message}`);process.exitCode=1;}finally{d.close();}}return; }
-  if(cmd==='status'){const s=read(stateFile);console.log(JSON.stringify({engine:s.engine,modelPolicy:s.modelPolicy,jobs:Object.values(s.jobs).map(({id,status,sessionId,error,summary,visibility,engine})=>({id,status,sessionId,error,summary,visibility,engine}))},null,2));return;}
+  if(cmd==='status'){const s=read(stateFile);console.log(JSON.stringify({engine:s.engine,coordinator:s.coordinator,modelPolicy:s.modelPolicy,jobs:Object.values(s.jobs).map(({id,status,sessionId,error,summary,visibility,engine})=>({id,status,sessionId,error,summary,visibility,engine}))},null,2));return;}
   if(cmd==='open'){const s=read(stateFile),j=s.jobs[args[0]];if(!j?.sessionId)throw Error('未知任务包，不能打开不存在的会话');const d=await new Desktop(j.engine||s.engine).connect();try{const proof=await showJob(d,j);console.log(JSON.stringify(proof,null,2));if(!proof.confirmed)process.exitCode=2;}finally{d.close();}return;}
   if(cmd==='watch'){let previous='';for(;;){const x=read(stateFile),signature=Object.values(x.jobs).map(j=>`${j.id}: ${j.status}`).join(' | ');if(signature!==previous){previous=signature;console.log(signature);}if(Object.values(x.jobs).every(j=>['exec_done','verified','failed','unknown','cancelled','blocked'].includes(j.status)))return;await sleep(3000);} }
   if(cmd==='verify'){

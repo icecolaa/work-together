@@ -47,8 +47,20 @@
 
 ## v0.3：提示词选择协作组合与逐包混排
 
-2026-10-18：提示词/skill 支持 `executor=zcode|workbuddy|both`；plan.json 逐包可写 `engine`（顶层 engine 为缺省），调度器按包连接对应桌面并分别解析模型策略，`open`/`cancel`/验收按各包执行器路由，启动保护改为按任务级引擎判断（旧 state 无逐包引擎时回退顶层 engine）。自动化测试覆盖逐包 engine 校验（合法/非法值）与混排计划的启动保护（workbuddy 包运行中只阻断 workbuddy 重启、不误伤 zcode），共 19 项测试在 PowerShell 7 与 5.1 双通道通过。**两款工具同时参与的真实现场派发验收尚未进行**；完成前不宣称双执行器协作已在现场可用，现有单引擎计划的命令与状态文件格式保持兼容。
+2026-10-18：提示词/skill 支持 `executor=zcode|workbuddy|both`；plan.json 逐包可写 `engine`（顶层 engine 为缺省），调度器按包连接对应桌面并分别解析模型策略，`open`/`cancel`/验收按各包执行器路由，启动保护改为按任务级引擎判断（旧 state 无逐包引擎时回退顶层 engine）。自动化测试覆盖逐包 engine 校验（合法/非法值）与混排计划的启动保护（workbuddy 包运行中只阻断 workbuddy 重启、不误伤 zcode），共 19 项测试在 PowerShell 7 与 5.1 双通道通过。现场验收于同日完成（见「v0.3/v0.4 现场验收」节），现有单引擎计划的命令与状态文件格式保持兼容。
 
 ## v0.4：主持方可为 ZCode 或 WorkBuddy
 
-2026-10-18：plan.json 顶层 `coordinator`（codex|zcode|workbuddy，缺省 codex）声明主持方——运行 skill、负责 Spec/Plan/Verify 的聊天所在的工具。调度器拒绝 engine 与主持方相同的任务包（Exec 必须指派其他工具），会话标题与派发提示词改用主持方名称，恢复校验加入主持方一致性，STATUS.md 显示主持方。启动保护新增主持方规则：主持方为 ZCode/WorkBuddy 且调度器持锁时该应用不可被自动重启（重启会杀死主持会话与调度器），执行器应用仍按任务级引擎与活跃状态判断。自动化测试覆盖 coordinator 校验（自指派被拒、跨工具合法、缺省 codex）与主持方应用保护（驻留期仍保护主持方、不误保护无活跃任务的执行器），共 20 项测试在 PowerShell 7 与 5.1 双通道通过。**主持方为 ZCode/WorkBuddy 的完整现场流程（在其聊天内运行 skill 并派发给另一工具）尚未验证**；Codex 主持路径行为不变，旧 state 缺 coordinator 时按 codex 处理。
+2026-10-18：plan.json 顶层 `coordinator`（codex|zcode|workbuddy，缺省 codex）声明主持方——运行 skill、负责 Spec/Plan/Verify 的聊天所在的工具。调度器拒绝 engine 与主持方相同的任务包（Exec 必须指派其他工具），会话标题与派发提示词改用主持方名称，恢复校验加入主持方一致性，STATUS.md 显示主持方。启动保护新增主持方规则：主持方为 ZCode/WorkBuddy 且调度器持锁时该应用不可被自动重启（重启会杀死主持会话与调度器），执行器应用仍按任务级引擎与活跃状态判断。自动化测试覆盖 coordinator 校验（自指派被拒、跨工具合法、缺省 codex）与主持方应用保护（驻留期仍保护主持方、不误保护无活跃任务的执行器），共 20 项测试在 PowerShell 7 与 5.1 双通道通过。主持方=ZCode 的完整现场流程已于同日验收（见下节）；主持方=WorkBuddy 未单独跑现场（其机制与 ZCode 主持完全对称：同一调度器、对称的校验与保护测试均已覆盖），Codex 主持路径行为不变，旧 state 缺 coordinator 时按 codex 处理。
+
+## v0.3/v0.4 现场验收（2026-10-18）
+
+**验收一：主持方=ZCode，执行器=WorkBuddy（`.local/smoke-coordinator-zcode`）**。本 ZCode 会话作为主持方写 SPEC/plan（coordinator=zcode），调度器派发两包到 WorkBuddy 桌面；两包 visibility confirmed、原生待办产生；执行中两包均遭遇 step-5-preview 模型请求瞬时 error，按 skill 流程**退回原会话修复**（独立请求 ID wt-fix-*，未重派），恢复后产物逐字节验收（31B/36B，Buffer.equals 通过），双包 verified、boundaryViolations=[]。同步验证了归属门：主持方迟写入的脚本先被拦（退出码 2），移入 .work-together 后放行。
+
+**验收二：双执行器混排，主持方=Codex CLI（`.local/smoke-mixed`）**。SPEC/plan 由 ZCode 会话代拟（模拟用户输入，coordinator=codex），`codex exec` 作为主持方完成：doctor 双桥预检 → 监控轮询 → 独立逐字节验收（zcode-side.txt 15B、workbuddy-side.txt 19B）→ 原生待办核对（ZCode Todo 4 条、WorkBuddy TaskCreate/TaskUpdate 3 条）→ 证据落盘 → 两次 verify → 最终 status 双包 verified。调度器输出逐引擎模型策略 `{zcode:…Flash/yolo, workbuddy:step-5-preview…}`。现场缺口就此关闭；zcode-side.txt 为首轮被取消运行的残留，第二轮 ZCode 执行者按回退条款逐字节核验后保持原样交付。
+
+**现场新踩坑（已可复现）**：
+1. `codex exec` 的命令沙箱会回收分离子进程：Start-Process 与 WMI Win32_Process.Create（ReturnCode=0）启动的调度器均在命令结束后消失——headless codex 不能承载长驻调度器，启动须由调用方或交互式宿主执行（operations.md 的既有设计得到实证）；`codex exec resume` 也不接受 `-C`。
+2. 本机经 MSYS/codex 环境调用时，任何 PowerShell 的 `Start-Process -WindowStyle Hidden` 都以退出码 127 静默失败（最小矩阵定位到 -WindowStyle 参数）；分离启动改用 WMI `Win32_Process.Create` 或宿主后台进程承载。
+3. 归属指纹门对主持方自己的迟写入文件同样生效——用户侧材料应在调度器启动前就位或放 `.work-together`。
+4. `codex exec` 模型端点当晚多次超时重试（最多 5 次），两轮 resume 均自行恢复，未丢操作。
