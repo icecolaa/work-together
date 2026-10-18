@@ -2,6 +2,22 @@
 
 需要 Windows、Node.js >=22（原生 fetch/WebSocket），已安装并登录 ZCode / WorkBuddy。当前适配验证目标：ZCode 3.15.3（内置 CLI 0.16.9）、WorkBuddy AI 5.7.6。脚本从 CDP 主窗口调用现有 renderer 服务，不安装或复制模型密钥，不改 app.asar，不使用云端会话替代桌面。
 
+## 命令速查
+
+| 命令 | 用途 | 何时用 |
+|---|---|---|
+| `start-desktops.ps1 -Engine both` | 启动/复用两款桌面（自动重启未开调试端口的实例） | 每次开工前 |
+| `workflow.mjs doctor [zcode\|workbuddy]` | 预检桌面桥与模型策略 | 启动后、排障时 |
+| `workflow.mjs run plan.json` | 派发并调度全部任务包（后台长驻） | 计划就绪后 |
+| `workflow.mjs run plan.json --resume` | 复用原会话恢复（先确认旧进程已退出） | 调度器意外退出后 |
+| `workflow.mjs status` | 当前各包状态与可见性（JSON） | 随时轮询 |
+| `workflow.mjs watch` | 实时输出状态变化 | 主持会话保持跟进时 |
+| `workflow.mjs open <包ID>` | 重新定位桌面会话，修复显示 | 派发了但桌面没显示/选中错误 |
+| `workflow.mjs verify <包ID> <证据文件>` | 登记独立验收证据，状态转 verified | 主持方核对完产物后 |
+| `workflow.mjs cancel <包ID>` | 向原会话送停止请求 | 需要中断某包时 |
+
+状态机：`queued → running → needs_user → exec_done → verified`；异常分支 `failed / unknown / blocked / cancelled`。unknown 不重派，先查原会话。遇到问题按症状查 [faq.md](faq.md)。
+
 ## 开始
 
 直接执行启动脚本，无需先手动退出托盘里的应用：

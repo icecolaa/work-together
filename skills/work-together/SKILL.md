@@ -1,10 +1,10 @@
 ---
 name: work-together
-description: 由主持方（当前聊天的 AI：Codex、ZCode 或 WorkBuddy）规划并独立验收，指派其他工具的桌面会话在同一工作目录并行执行独立任务包，跟踪待办、人工介入和验收证据。
+description: 由主持方（当前聊天的 AI：Codex、ZCode 或 WorkBuddy）规划并独立验收，指派其他工具的桌面会话在同一工作目录并行执行独立任务包，跟踪待办、人工介入和验收证据。仅支持 Windows；桌面桥验证绑定 ZCode 3.15.3 / WorkBuddy 5.7.6，应用升级后需重跑 doctor 并按需重新适配。
 slug: work-together
-version: 1.1.0
+version: 1.2.0
 displayName: Work Together
-summary: Codex、ZCode 或 WorkBuddy 任一作主持方，其他工具的桌面会话按文件归属并行执行独立任务包，主持方独立验收。
+summary: Codex、ZCode 或 WorkBuddy 任一作主持方，其他工具的桌面会话按文件归属并行执行独立任务包，主持方独立验收。仅 Windows，已验证版本绑定见环境边界。
 tags:
   - collaboration
   - multi-agent
@@ -31,3 +31,10 @@ homepage: https://github.com/icecolaa/work-together
 8. Exec 结束仅记 exec_done。你逐项读取真实产物、检查 diff、独立运行适合改动的测试，必要时看截图/控制台/应用后台状态，证据映射到 Spec 条件。失败退回原会话修复。将独立验收记录交给 `verify` 命令；不能仅凭执行者“通过”结案。所有包 verified 后交付，更新 PLAN.md 并给出简洁总报告。
 
 文件归属是协作约定，非操作系统隔离：真正相互冲突的构建/依赖/可变外部状态必须串行，或经用户接受后使用 worktree。不要承诺“同目录完全互不干扰”。发布、推送、发消息按当前用户授权范围处理。日志、截图、桌面会话、账号配置和密钥默认只留本地。
+
+## 配套材料（按需读取，不用一次读完）
+
+- **遇到问题**：按症状查 [references/faq.md](references/faq.md)——桌面不可见、verify 退出码 2、连接断开/unknown、headless 主持启动失败、模型费率判断等高频问题与反模式。
+- **第一次使用**：通读 [references/walkthrough.md](references/walkthrough.md) 端到端样例（含一次真实的"模型请求 error → 退回原会话修复"支线）。
+- **写计划**：拷贝 [examples/plan.example.json](examples/plan.example.json) 与 [examples/SPEC.template.md](examples/SPEC.template.md)。
+- **命令速查与环境边界**：[references/operations.md](references/operations.md) 顶部速查表；包内导览见 [README.md](README.md)。
