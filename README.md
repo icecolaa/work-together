@@ -19,7 +19,7 @@ v0.4 主持方不再限于 Codex：ZCode 或 WorkBuddy 的聊天同样可以负�
 
 安装：主持方为 Codex 时，把 `skills/work-together` 整个目录复制到 `~/.codex/skills/work-together`，重新打开 Codex 聊天后用 `$work-together` 调用；主持方为 ZCode 或 WorkBuddy 时，把 skill 放入其技能目录，或在提示词中直接给出 SKILL.md 的绝对路径，并在 plan.json 写 `coordinator`。每轮在提示词里指定 `executor=zcode`、`workbuddy` 或 `both`；plan.json 顶层 engine 为缺省执行器，个别包可用同名 engine 字段改派。
 
-需要 Node.js >=22，无 npm 依赖。`npm test` 运行调度关键约束测试。桌面适配使用版本相关的本机 CDP 私有桥，当前针对 ZCode 3.15.3 / WorkBuddy AI 5.7.6；升级需要重新检查。
+需要 Node.js >=22，无 npm 依赖。`npm test` 运行调度关键约束测试。桌面适配使用版本相关的本机 CDP 私有桥，当前针对 ZCode 3.15.3 / WorkBuddy AI 5.7.6；升级需要重新检查。Windows 为已验证平台；macOS 为实验性适配（未现场验证，见 skill 包 `references/macos.md` 的真机验证清单）。
 
 边界：文件归属是协作约定，不是沙箱。日志和会话在本地，主代理需保持当前回合跟进；单靠 skill 不能在 Codex 聊天结束后自动唤醒。桌面会话原生显示每包待办，总计划通过 PLAN.md / STATUS.md 同步，未修改 Codex 自身 UI。
 

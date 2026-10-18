@@ -1,10 +1,10 @@
 ---
 name: work-together
-description: 由主持方（当前聊天的 AI：Codex、ZCode 或 WorkBuddy）规划并独立验收，指派其他工具的桌面会话在同一工作目录并行执行独立任务包，跟踪待办、人工介入和验收证据。仅支持 Windows；桌面桥验证绑定 ZCode 3.15.3 / WorkBuddy 5.7.6，应用升级后需重跑 doctor 并按需重新适配。
+description: 由主持方（当前聊天的 AI：Codex、ZCode 或 WorkBuddy）规划并独立验收，指派其他工具的桌面会话在同一工作目录并行执行独立任务包，跟踪待办、人工介入和验收证据。Windows 为已验证平台（桌面桥绑定 ZCode 3.15.3 / WorkBuddy 5.7.6，应用升级需重跑 doctor）；macOS 为实验性适配、未现场验证，首次使用按 references/macos.md 清单执行。
 slug: work-together
-version: 1.2.0
+version: 1.3.0
 displayName: Work Together
-summary: Codex、ZCode 或 WorkBuddy 任一作主持方，其他工具的桌面会话按文件归属并行执行独立任务包，主持方独立验收。仅 Windows，已验证版本绑定见环境边界。
+summary: Codex、ZCode 或 WorkBuddy 任一作主持方，其他工具的桌面会话按文件归属并行执行独立任务包，主持方独立验收。Windows 已验证；macOS 实验性。
 tags:
   - collaboration
   - multi-agent
@@ -36,5 +36,6 @@ homepage: https://github.com/icecolaa/work-together
 
 - **遇到问题**：按症状查 [references/faq.md](references/faq.md)——桌面不可见、verify 退出码 2、连接断开/unknown、headless 主持启动失败、模型费率判断等高频问题与反模式。
 - **第一次使用**：通读 [references/walkthrough.md](references/walkthrough.md) 端到端样例（含一次真实的"模型请求 error → 退回原会话修复"支线）。
+- **macOS 用户**：适配为实验性、未现场验证，先读 [references/macos.md](references/macos.md) 的边界与真机验证清单。
 - **写计划**：拷贝 [examples/plan.example.json](examples/plan.example.json) 与 [examples/SPEC.template.md](examples/SPEC.template.md)。
 - **命令速查与环境边界**：[references/operations.md](references/operations.md) 顶部速查表；包内导览见 [README.md](README.md)。

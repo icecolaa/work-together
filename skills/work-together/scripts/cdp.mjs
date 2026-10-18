@@ -8,6 +8,41 @@ import { ZCODE_DEFAULTS, selectZCodeModel, selectWorkBuddyModel } from './model-
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+// Renderer page URLs differ by platform: Windows installs use
+// "<install>/ZCode/resources/..." while macOS bundles look like
+// "/Applications/ZCode.app/Contents/Resources/app.asar/...". Match the app
+// name followed by a resources segment, case-insensitive, both separators.
+export function matchesDesktopPage(engine, url) {
+  if (typeof url !== 'string' || !url.startsWith('file:')) return false;
+  return engine === 'zcode'
+    ? /zcode[^\s]*?[/\\]resources/i.test(url)
+    : /workbuddy[^\s]*?[/\\]resources/i.test(url);
+}
+
+// Derive the ZCode desktop executable from the renderer page URL so focus()
+// can reopen the project in the same installation. Windows keeps the legacy
+// "<install>/ZCode.exe" derivation; macOS resolves the .app bundle boundary.
+// Parsing is host-independent (manual decode + explicit path.win32/posix) so
+// the darwin branch stays unit-testable on any platform. An empty string
+// means the shape was unrecognized; focus() reports it.
+export function deriveZCodeExecutable(pageUrl, platform = process.platform) {
+  let decoded;
+  try { decoded = decodeURIComponent(pageUrl.split('?')[0].split('#')[0]); } catch { return ''; }
+  const body = decoded.match(/^file:\/\/\/(.*)$/)?.[1];
+  if (typeof body !== 'string') return '';
+  if (platform === 'darwin') {
+    const posix = '/' + body;
+    const i = posix.toLowerCase().indexOf('.app/');
+    if (i < 0) return '';
+    const appPath = posix.slice(0, i + 4);
+    const name = path.posix.basename(appPath).replace(/\.app$/i, '');
+    return path.posix.join(appPath, 'Contents', 'MacOS', name);
+  }
+  const rendererPath = body.replace(/\//g, '\\');
+  const install = rendererPath.slice(0, rendererPath.toLowerCase().indexOf(`${path.win32.sep}resources${path.win32.sep}`));
+  return path.win32.join(install, 'ZCode.exe');
+}
+
 export class Desktop {
   constructor(engine, port = engine === 'zcode' ? 19331 : 19332, options = {}) {
     this.engine = engine;
@@ -20,8 +55,7 @@ export class Desktop {
 
   async connect() {
     const pages = await (await fetch(`http://127.0.0.1:${this.port}/json/list`, { signal: AbortSignal.timeout(5000) })).json();
-    const page = pages.find(p => p.type === 'page' && p.url.startsWith('file:') &&
-      (this.engine === 'zcode' ? /ZCode\/resources/i : /WorkBuddyAI\/resources/i).test(p.url));
+    const page = pages.find(p => p.type === 'page' && matchesDesktopPage(this.engine, p.url));
     if (!page) throw Error(`未找到 ${this.engine} 主窗口`);
     this.pageUrl = page.url;
     this.ws = new WebSocket(page.webSocketDebuggerUrl);
@@ -142,10 +176,8 @@ export class Desktop {
 
   async focus(cwd, id, marker = '') {
     if (this.engine === 'zcode') {
-      const rendererPath = fileURLToPath(this.pageUrl.split('?')[0]);
-      const install = rendererPath.slice(0, rendererPath.toLowerCase().indexOf(`${path.sep}resources${path.sep}`));
-      const executable = path.join(install, 'ZCode.exe');
-      if (!existsSync(executable)) throw Error('找不到当前 ZCode 窗口的桌面程序，无法打开项目');
+      const executable = deriveZCodeExecutable(this.pageUrl, process.platform);
+      if (!executable || !existsSync(executable)) throw Error('找不到当前 ZCode 窗口的桌面程序，无法打开项目');
       await new Promise((resolve, reject) => {
         const child = spawn(executable, ['--open-workspace', cwd], { windowsHide: true, stdio: 'ignore' });
         child.once('spawn', () => { child.unref(); resolve(); });

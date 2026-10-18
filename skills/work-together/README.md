@@ -2,7 +2,7 @@
 
 让当前聊天里的 AI 担任**主持方**（Spec/Plan/Verify），把 Exec 派发给**其他工具**的桌面会话（ZCode / WorkBuddy）并行执行，逐包独立验收。
 
-**环境边界**：仅 Windows；需要 Node.js >= 22；桌面桥验证绑定 ZCode 3.15.3 / WorkBuddy 5.7.6，任一应用升级后必须重跑 `doctor`，失败即需重新适配（不会假报成功）。
+**环境边界**：Windows 为已验证平台（Node.js >= 22；桌面桥验证绑定 ZCode 3.15.3 / WorkBuddy 5.7.6，任一应用升级后必须重跑 `doctor`，失败即需重新适配——不会假报成功）。macOS 为**实验性适配、未现场验证**：核心逻辑有跨平台单测，darwin 启动器仅语法校验；首次在 Mac 上使用前必读 `references/macos.md` 并执行其验证清单。
 
 ## 快速开始（3 步）
 
@@ -25,6 +25,7 @@ node <本skill绝对路径>/scripts/workflow.mjs run plan.json
 | `references/operations.md` | 运行协议：命令速查、plan.json 结构、恢复/取消/回退 | 派发前与日常操作 |
 | `references/faq.md` | 反模式与高频问题集中清单 | 遇到问题时按症状查 |
 | `references/walkthrough.md` | 端到端实战样例（含失败恢复） | 第一次使用前通读 |
+| `references/macos.md` | macOS 实验性适配状态与真机验证清单 | macOS 用户首次使用前必读 |
 | `examples/plan.example.json` | 可拷贝的最小 plan 模板（含混排写法） | 写计划时 |
 | `examples/SPEC.template.md` | SPEC 模板（目标/边界/交付/验收/回退） | 写 Spec 时 |
 | `scripts/workflow.mjs` | 调度入口：run/status/watch/open/verify/cancel | — |
