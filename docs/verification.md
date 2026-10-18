@@ -64,3 +64,11 @@
 2. 本机经 MSYS/codex 环境调用时，任何 PowerShell 的 `Start-Process -WindowStyle Hidden` 都以退出码 127 静默失败（最小矩阵定位到 -WindowStyle 参数）；分离启动改用 WMI `Win32_Process.Create` 或宿主后台进程承载。
 3. 归属指纹门对主持方自己的迟写入文件同样生效——用户侧材料应在调度器启动前就位或放 `.work-together`。
 4. `codex exec` 模型端点当晚多次超时重试（最多 5 次），两轮 resume 均自行恢复，未丢操作。
+
+**验收三：主持方=WorkBuddy，执行器=ZCode（`.local/smoke-coordinator-workbuddy`，2026-10-18）**。通过桌面桥创建 WorkBuddy 主持会话（coordinator=workbuddy），由它亲自撰写 SPEC/plan（按任务书逐字）、doctor 预检、监控轮询、**两轮全新独立验收**（续指令后不依赖前轮结论重做）、证据落盘、verify、最终报告；单包 zexec（engine=zcode）派发到 ZCode 桌面：产物 zcode-exec.txt 36 字节逐字节通过（主持会话与 ZCode 会话双重独立比对）、原生 Todo 在场、verified、violations=[]。至此三种主持方中 Codex（v0.1/v0.2 交互式聊天）、ZCode（验收一）、WorkBuddy（本验收）均已现场跑通"主持方规划验收 + 其他工具桌面执行"；"WorkBuddy 主持 + WorkBuddy 执行"被 coordinator≠engine 校验禁止，属设计约束而非缺口。
+
+**验收三新事实**：
+1. WorkBuddy 沙箱在 PowerShell 与 Bash 两通道均**策略层拦截** WMI 进程创建（与 codex exec 的"允许创建但回收子进程"是不同机制）；其自有"后台任务机制"可以启动调度器，但与用户侧已启动实例在 runner.lock 上撞车——单调度器约束在跨宿主场景下正确工作。
+2. WorkBuddy 主持会话的 relaunch 重定向截断了 runner.out.log（其最终报告自行披露此遗留项，"已连接 zcode"以 state.json/zexec.jsonl/visibility.json 佐证）。
+3. 外部驱动 Desktop.create 时 cwd 会被多层转义吃掉路径分隔符（SDK 明确报 "cwd lost its path separators"）；从脚本外部传路径应经 argv 等免转义通道，并注意 `-e` 模式下参数从 argv[1] 开始。
+4. 主持会话收到"调度器已由用户侧启动"的续指令后按步骤 5 续跑，并在 verify 已完成后仍重做一轮全新独立验收、用新结果重写证据——独立验收语义得到遵守。

@@ -29,7 +29,7 @@
 6. **c82e829（10-17）v0.2.1**：启动脚本自动退出并重启未开调试端口的桌面应用（新增 `desktop-lifecycle.ps1`，123 行），健康实例直接复用；当前项目有运行中任务时保护现场，需 `-ForceRestart` 才中断。修掉 Windows PowerShell 5.1 的 JSON 数组包装与 .NET Framework file URL 查询参数解析差异；新增 11 场景启动测试（PS7 与 PS5.1 双环境通过）。
 7. **10-18 review 修复 + v0.3**：先修复 review 发现的三处问题（WorkBuddy 路径回退被跳过、调度状态不可读时保护崩掉、缺 url 页面打断桥检测）并补 7 个启动场景；随后实现 v0.3——提示词 `executor=zcode|workbuddy|both`，plan.json 逐包 `engine` 字段（顶层为缺省），调度器按包连接对应桌面并分别解析模型策略，`open`/`cancel`/验收按各包执行器路由，启动保护按任务级引擎判断。
 8. **10-18 v0.4**：主持方不再固定为 Codex——plan.json 顶层 `coordinator`（codex|zcode|workbuddy，缺省 codex）声明主持方，调度器**拒绝 engine 与主持方相同的包**（Exec 必须指派其他工具）；会话标题/派发提示词用主持方名称，恢复校验含主持方一致性，STATUS.md 显示主持方；主持方应用在调度器持锁期间受启动保护。
-9. **10-18 现场验收（v0.3/v0.4 缺口关闭）**：①主持方=ZCode→WorkBuddy 双包现场跑通，含"模型请求瞬时 error → 退回原会话修复（独立请求 ID）→ 逐字节验收"完整链路；②混排（coordinator=codex）由 `codex exec` 主持完成 doctor/监控/独立验收/证据/verify，双包 verified、逐引擎策略分键正确。新踩坑已记入 docs/verification.md：codex exec 沙箱回收分离子进程（调度器须调用方/交互宿主启动）、Start-Process -WindowStyle Hidden 在本机 127 静默失败（改用 WMI Win32_Process.Create）、归属门对主持方迟写文件同样生效。status 输出补 coordinator 字段。
+9. **10-18 现场验收（v0.3/v0.4 缺口全部关闭）**：①主持方=ZCode→WorkBuddy 双包现场跑通，含"模型请求瞬时 error → 退回原会话修复（独立请求 ID）→ 逐字节验收"完整链路；②混排（coordinator=codex）由 `codex exec` 主持完成 doctor/监控/独立验收/证据/verify，双包 verified、逐引擎策略分键正确；③主持方=WorkBuddy→ZCode 现场跑通（WorkBuddy 会话亲写 SPEC/plan、两轮独立验收、verify，单包 verified）。三种主持方均已现场验证。新踩坑已记入 docs/verification.md：codex exec 沙箱回收分离子进程、WorkBuddy 沙箱策略层拦截 WMI（其后台任务机制可启动但会与用户侧实例撞 runner.lock）、Start-Process -WindowStyle Hidden 本机 127 静默失败、归属门对主持方迟写文件同样生效、Desktop.create 的 cwd 转义坑。status 输出补 coordinator 字段。
 
 ## 四、关键结论（工作原理速查）
 
@@ -52,11 +52,10 @@
 
 ## 六、下一步计划（候选）
 
-1. **主持方=WorkBuddy 现场流程**（可选）：机制与 ZCode 主持完全对称且测试已覆盖，未单独跑现场；如需绝对完整可在 WorkBuddy 聊天里重复验收一。
-2. **升级适配巡检**：ZCode / WorkBuddy 任一发布新版本后重跑 `doctor` 与测试，必要时修桌面桥。
-3. **真实故障演练**：对运行中的真实任务做一次 cancel/失联恢复演练（本轮 ② 的模型请求 error 修复已部分覆盖该路径）。
-4. **跨回合自动汇报**：调研宿主侧通知/自动化能力，补上"主持方回合结束后自动唤醒"这块已知空白。
-5. **可选增强**：worktree 隔离选项（真冲突包并行）、把 `.local` 证据归档流程脚本化。
+1. **升级适配巡检**：ZCode / WorkBuddy 任一发布新版本后重跑 `doctor` 与测试，必要时修桌面桥。
+2. **真实故障演练**：对运行中的真实任务做一次 cancel/失联恢复演练（验收一已覆盖"模型请求 error→同会话修复"路径，cancel 的桌面端演练仍待做）。
+3. **跨回合自动汇报**：调研宿主侧通知/自动化能力，补上"主持方回合结束后自动唤醒"这块已知空白。
+4. **可选增强**：worktree 隔离选项（真冲突包并行）、把 `.local` 证据归档流程脚本化、operations.md 增补"headless 主持（codex exec/WorkBuddy 沙箱）须由调用方启动调度器"的明确分工说明。
 
 ## 七、新窗口快速上手
 

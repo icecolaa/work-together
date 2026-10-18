@@ -46,6 +46,8 @@ node $runner verify draft-a .work-together/draft-a.verification.md
 
 含空格的参数在 PowerShell Start-Process 中需显式加双引号；推荐使用绝对无空格 runner 路径或由调用方正确引用。状态文件 `.work-together/state.json`，简洁看板 `STATUS.md`，每包日志 `<id>.jsonl`，介入卡 `<id>.review.md`。不要将该目录推送远程。`watch` 在当前工具调用存续时实时输出变化；宿主需持续读取才能自动带回当前主持会话。
 
+headless 主持（如 `codex exec`、WorkBuddy 命令沙箱）无法承载长驻调度器：前者回收分离子进程，后者在策略层拦截 WMI/Start-Process 进程创建。此场景由调用方（用户或其他宿主会话）按上方命令启动调度器，主持会话只负责 Spec/Plan、监控轮询与独立验收。WorkBuddy 沙箱的后台任务机制可以另起调度器，但会与已有实例在 runner.lock 上冲突（单调度器约束）；本机经 MSYS 调用时 `Start-Process -WindowStyle Hidden` 会以退出码 127 静默失败，分离启动可用 WMI `Win32_Process.Create`。
+
 ## 桌面查看与介入
 
 派发后脚本自动打开当前项目并选择对应任务，不再要求用户从旧项目里自行寻找。ZCode 使用当前安装的 ZCode.exe `--open-workspace <项目绝对路径>` 和真实会话导航状态；WorkBuddy 使用原生会话路由。侧栏应出现 `[Codex/包ID]`，正文应出现 `协作任务包：包ID`。两者都确认后记录 `.work-together/<包ID>.visibility.json`。未确认则明确报告，`verify` 会阻断；任务可能已在运行，不能为了显示问题重复派发。
