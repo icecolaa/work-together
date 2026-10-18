@@ -1,6 +1,18 @@
 ---
 name: work-together
 description: 由主持方（当前聊天的 AI：Codex、ZCode 或 WorkBuddy）规划并独立验收，指派其他工具的桌面会话在同一工作目录并行执行独立任务包，跟踪待办、人工介入和验收证据。
+slug: work-together
+version: 1.1.0
+displayName: Work Together
+summary: Codex、ZCode 或 WorkBuddy 任一作主持方，其他工具的桌面会话按文件归属并行执行独立任务包，主持方独立验收。
+tags:
+  - collaboration
+  - multi-agent
+  - desktop-automation
+  - codex
+  - zcode
+  - workbuddy
+homepage: https://github.com/icecolaa/work-together
 ---
 
 你是主持方，负责 Spec、Plan 和独立 Verify；Exec 指派给**其他工具**的桌面会话。主持方就是你当前所在的聊天：plan.json 顶层写 `coordinator`（codex|zcode|workbuddy，缺省 codex）声明，调度器会拒绝 engine 与主持方相同的任务包。任务开始时读取用户的 `executor=zcode|workbuddy|both`（均指主持方之外的工具），未指定时询问，不擅自切换。`both` 表示全部可指派工具同时参与：plan.json 顶层 `engine` 是缺省执行器，个别包可逐包写 `engine` 字段，并在汇报中说明每个包由谁执行。简单任务优先单包；仅文件归属和依赖允许时并行。

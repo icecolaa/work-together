@@ -30,6 +30,7 @@
 7. **10-18 review 修复 + v0.3**：先修复 review 发现的三处问题（WorkBuddy 路径回退被跳过、调度状态不可读时保护崩掉、缺 url 页面打断桥检测）并补 7 个启动场景；随后实现 v0.3——提示词 `executor=zcode|workbuddy|both`，plan.json 逐包 `engine` 字段（顶层为缺省），调度器按包连接对应桌面并分别解析模型策略，`open`/`cancel`/验收按各包执行器路由，启动保护按任务级引擎判断。
 8. **10-18 v0.4**：主持方不再固定为 Codex——plan.json 顶层 `coordinator`（codex|zcode|workbuddy，缺省 codex）声明主持方，调度器**拒绝 engine 与主持方相同的包**（Exec 必须指派其他工具）；会话标题/派发提示词用主持方名称，恢复校验含主持方一致性，STATUS.md 显示主持方；主持方应用在调度器持锁期间受启动保护。
 9. **10-18 现场验收（v0.3/v0.4 缺口全部关闭）**：①主持方=ZCode→WorkBuddy 双包现场跑通，含"模型请求瞬时 error → 退回原会话修复（独立请求 ID）→ 逐字节验收"完整链路；②混排（coordinator=codex）由 `codex exec` 主持完成 doctor/监控/独立验收/证据/verify，双包 verified、逐引擎策略分键正确；③主持方=WorkBuddy→ZCode 现场跑通（WorkBuddy 会话亲写 SPEC/plan、两轮独立验收、verify，单包 verified）。三种主持方均已现场验证。新踩坑已记入 docs/verification.md：codex exec 沙箱回收分离子进程、WorkBuddy 沙箱策略层拦截 WMI（其后台任务机制可启动但会与用户侧实例撞 runner.lock）、Start-Process -WindowStyle Hidden 本机 127 静默失败、归属门对主持方迟写文件同样生效、Desktop.create 的 cwd 转义坑。status 输出补 coordinator 字段。
+10. **10-18 发布 SkillHub v1.1.0**：SKILL.md frontmatter 补齐 slug/version/displayName/summary/tags/homepage（SkillHub 必填前三项），仓库 package.json 与线上版本统一为 1.1.0（线上此前已有用户发布的 1.0.0）；经官方 CLI（~/.local/bin/skillhub，登录账号 @user_5dea5c46）dry-run 后发布，skillId=284961、versionId=444546，**提交时审核 pending、安全扫描中**，过审后线上 latest 翻转为 1.1.0（查询：`curl -H "Authorization: Bearer <key>" https://api.skillhub.cn/api/v1/dashboard/skills/work-together/versions`）。发布规范见 https://skillhub.cn/ai/release.md。
 
 ## 四、关键结论（工作原理速查）
 
