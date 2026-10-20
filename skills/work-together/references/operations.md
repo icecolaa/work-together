@@ -1,6 +1,6 @@
 # 桌面运行协议
 
-需要 Windows、Node.js >=22（原生 fetch/WebSocket），已安装并登录 ZCode / WorkBuddy。当前适配验证目标：ZCode 3.15.3（内置 CLI 0.16.9）、WorkBuddy AI 5.7.6。脚本从 CDP 主窗口调用现有 renderer 服务，不安装或复制模型密钥，不改 app.asar，不使用云端会话替代桌面。
+已验证环境为 Windows、Node.js >=22（原生 fetch/WebSocket），以及已安装并登录的所选执行器 ZCode / WorkBuddy。当前适配验证目标：ZCode 3.15.3（内置 CLI 0.16.9）、WorkBuddy AI 5.7.6。macOS 为实验性，先读 [macos.md](macos.md)，使用其中的 Bash 启动方式。脚本从 CDP 主窗口调用现有 renderer 服务，不安装或复制模型密钥，不改 app.asar，不使用云端会话替代桌面。
 
 ## 命令速查
 
@@ -66,7 +66,7 @@ headless 主持（如 `codex exec`、WorkBuddy 命令沙箱）无法承载长驻
 
 ## 桌面查看与介入
 
-派发后脚本自动打开当前项目并选择对应任务，不再要求用户从旧项目里自行寻找。ZCode 使用当前安装的 ZCode.exe `--open-workspace <项目绝对路径>` 和真实会话导航状态；WorkBuddy 使用原生会话路由。侧栏应出现 `[Codex/包ID]`，正文应出现 `协作任务包：包ID`。两者都确认后记录 `.work-together/<包ID>.visibility.json`。未确认则明确报告，`verify` 会阻断；任务可能已在运行，不能为了显示问题重复派发。
+派发后脚本自动打开当前项目并选择对应任务，不再要求用户从旧项目里自行寻找。ZCode 使用当前安装的 ZCode.exe `--open-workspace <项目绝对路径>` 和真实会话导航状态；WorkBuddy 使用原生会话路由。侧栏标题前缀随主持方显示为 `[Codex/包ID]`、`[ZCode/包ID]` 或 `[WorkBuddy/包ID]`，正文应出现 `协作任务包：包ID`。两者都确认后记录 `.work-together/<包ID>.visibility.json`。未确认则明确报告，`verify` 会阻断；任务可能已在运行，不能为了显示问题重复派发。
 
 已有任务显示在错误项目、旧 smoke-zcode 会话或侧栏收起时，在**实际任务项目根目录**执行 `node <runner绝对路径> open <包ID>`。命令只打开已有会话，不发送新消息、不重建会话，不影响原调度进程。该项目必须已有 `.work-together/state.json` 和 sessionId。普通轮询不切屏，派发和首次 needs_user 自动定位；用户仍可在侧栏切换并行任务。
 
@@ -85,4 +85,4 @@ node $runner run plan.json --resume
 
 ZCode 默认 `mode=yolo`（完全访问）、`model=GLM-5.3-Flash`；每次发送都明确指定模型，且从当前桌面供应商目录检查其可用性。WorkBuddy 默认 `permissionMode=bypassPermissions`（允许完全访问），模型按本机 `wb.models.list()` 的 credits 动态选：优先零费率，若无则选最低已知费率并报告；Auto/空费率不能据此视为免费。零费率同档优先 Step-5-Preview、Deepseek-V4.1-Flash、Hy3，仅在列表显示该模型费率为零时适用。服务方计费信息可能变化，记录的是本次选择时的桌面报价，不保证永久免费。
 
-可在 plan.json 顶层明确覆盖 `model`、ZCode 的 `mode`、WorkBuddy 的 `permissionMode`。例如 ZCode 的 `{"engine":"zcode","model":"GLM-5.3-Flash","mode":"yolo",...}`。这些设置应用于新建协作会话，不修改所有项目的全局配置，不打断已有任务。共享工作日志/记忆需由 Codex 统一写，执行者不得写 `.workbuddy-ai/memory` 等共享文件。并发同目录不能隔离全局安装、端口、数据库、生成目录；计划者要避免这些冲突。首次启动的文件指纹会读取项目普通文件，大型目录的启动检查可能较慢。
+可在 plan.json 顶层明确覆盖 `model`、ZCode 的 `mode`、WorkBuddy 的 `permissionMode`。例如 ZCode 的 `{"engine":"zcode","model":"GLM-5.3-Flash","mode":"yolo",...}`。这些设置应用于新建协作会话，不修改所有项目的全局配置，不打断已有任务。共享工作日志/记忆需由主持方统一写，执行者不得写 `.workbuddy-ai/memory` 等共享文件。并发同目录不能隔离全局安装、端口、数据库、生成目录；计划者要避免这些冲突。首次启动的文件指纹会读取项目普通文件，大型目录的启动检查可能较慢。

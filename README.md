@@ -21,6 +21,8 @@ v0.4 主持方不再限于 Codex：ZCode 或 WorkBuddy 的聊天同样可以负�
 
 需要 Node.js >=22，无 npm 依赖。`npm test` 运行调度关键约束测试。桌面适配使用版本相关的本机 CDP 私有桥，当前针对 ZCode 3.15.3 / WorkBuddy AI 5.7.6；升级需要重新检查。Windows 为已验证平台；macOS 为实验性适配（未现场验证，见 skill 包 `references/macos.md` 的真机验证清单）。
 
+测试启动器语法需要 Bash：Windows 自动选择 Git Bash，避开系统 WSL 入口；其他平台使用 PATH 中的 `bash`。可用环境变量 `WT_TEST_BASH` 指定 Bash 可执行文件的完整路径。macOS 仅做启动器语法校验，自动跳过非 macOS 拒绝用例，不会在测试中启动桌面应用。
+
 边界：文件归属是协作约定，不是沙箱。日志和会话在本地，主代理需保持当前回合跟进；单靠 skill 不能在 Codex 聊天结束后自动唤醒。桌面会话原生显示每包待办，总计划通过 PLAN.md / STATUS.md 同步，未修改 Codex 自身 UI。
 
 参考：[Codex 长任务的持久计划与验证](https://developers.openai.com/blog/run-long-horizon-tasks-with-codex)、[ZCode 官方文档](https://zcode.z.ai/cn/docs/welcome)、[WorkBuddy 官方文档](https://www.workbuddy.ai/docs/)。用户提供的[微信文章](https://mp.weixin.qq.com/s/KeQmHzdWDY53cfDBZj81lA)未能读取正文，未将推测内容计入实现。
