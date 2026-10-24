@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {Desktop} from '../skills/work-together/scripts/cdp.mjs';
 
-function inspect({activeId='new-session',paneId='new-session',selected=true,workspace=true,text='协作任务包：new-task'}={}) {
+function inspect({activeId='new-session',paneId='new-session',selected=true,workspace=true,projectName=null,text='协作任务包：new-task'}={}) {
   const item={classList:{contains:()=>selected}};
   const pane={getAttribute:()=>paneId,innerText:text,querySelector:()=>({getAttribute:()=>1})};
-  const document={body:{innerText:text},querySelector:selector=>selector.includes('workspace-item-')?(workspace?{getClientRects:()=>[{}]}:null):selector.includes('v4-session-pane')?pane:item};
+  const project=projectName?{getAttribute:()=>projectName,getClientRects:()=>[{}]}:null;
+  const document={body:{innerText:text},querySelector:selector=>selector.includes('workspace-item-')?(workspace?{getClientRects:()=>[{}]}:null):selector.includes('section[data-project-name=')?project:selector.includes('v4-session-pane')?pane:item};
   const store={getWorkspaceState:()=>({activeTaskId:activeId})};
   const expression=new Desktop('zcode').visibilityExpression('E:\\real-project','new-session','协作任务包：new-task');
   return vm.runInNewContext(expression,{document,CSS:{escape:s=>s},window:{__wtSessionStore:{getState:()=>store}}});
@@ -23,6 +24,12 @@ test('目标项目和会话均选中但正文尚未加载，不算桌面过程�
 test('正确项目、session 与正文包标记共同确认可见性',()=>{
   const proof=inspect();assert.equal(proof.confirmed,true);assert.equal(proof.sessionId,'new-session');
 });
+test('ZCode 新版项目侧栏识别且拒绝错误项目',()=>{
+  assert.equal(inspect({workspace:false,projectName:'real-project'}).confirmed,true);
+  assert.equal(inspect({workspace:false,projectName:'different-project'}).confirmed,false);
+  assert.equal(inspect({workspace:false,projectName:'real-project',activeId:'other-session'}).confirmed,false);
+});
+
 test('已受理消息后重命名失败，不重复发起模型执行',async()=>{
   const desktop=new Desktop('zcode');let sends=0;
   desktop.modelPolicy={providerId:'account:test',modelId:'GLM-5.3-Flash',mode:'yolo'};

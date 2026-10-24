@@ -1,33 +1,50 @@
 {
   "coordinator": "codex",
-  "engine": "zcode",
+  "engine": "auto",
   "concurrency": 2,
   "spec": "SPEC.md",
   "tasks": [
     {
       "id": "draft-a",
       "title": "第一篇草稿",
-      "files": ["drafts/a.md"],
+      "files": [
+        "drafts/a.md"
+      ],
       "dependsOn": [],
       "prompt": "按 SPEC.md 写第一篇草稿，不发布。只修改 drafts/a.md。",
-      "acceptance": ["drafts/a.md 非空且包含规定的十个图片引用", "未改动其他文件"]
+      "acceptance": [
+        "drafts/a.md 非空且包含规定的十个图片引用",
+        "未改动其他文件"
+      ]
     },
     {
       "id": "draft-b",
-      "title": "第二篇草稿（由另一款工具执行）",
-      "engine": "workbuddy",
-      "files": ["drafts/b.md"],
+      "title": "第二篇草稿",
+      "files": [
+        "drafts/b.md"
+      ],
       "dependsOn": [],
       "prompt": "按 SPEC.md 写第二篇草稿，不发布。只修改 drafts/b.md。",
-      "acceptance": ["drafts/b.md 非空且包含规定的十个图片引用", "未改动其他文件"]
+      "acceptance": [
+        "drafts/b.md 非空且包含规定的十个图片引用",
+        "未改动其他文件"
+      ]
     },
     {
       "id": "merge-readme",
       "title": "汇总两篇草稿的索引",
-      "files": ["drafts/INDEX.md"],
-      "dependsOn": ["draft-a", "draft-b"],
+      "files": [
+        "drafts/INDEX.md"
+      ],
+      "dependsOn": [
+        "draft-a",
+        "draft-b"
+      ],
       "prompt": "读取 drafts/a.md 与 drafts/b.md，生成 drafts/INDEX.md 索引（各段标题+一句话摘要）。只修改 drafts/INDEX.md。",
-      "acceptance": ["INDEX.md 引用两篇草稿的全部一级标题", "未修改两篇草稿本身"]
+      "acceptance": [
+        "INDEX.md 引用两篇草稿的全部一级标题",
+        "未修改两篇草稿本身"
+      ]
     }
   ]
 }

@@ -1,52 +1,31 @@
 # Work Together · 跨工具桌面协作
 
-让当前聊天里的 AI 担任**主持方**（Spec/Plan/Verify），把 Exec 派发给**其他工具**的桌面会话（ZCode / WorkBuddy）并行执行，逐包独立验收。
+主持聊天管理 Spec / Plan / Verify，桌面助手执行 Exec。v1.4.0 默认 `engine=auto`，优先顺序为 ZCode `GLM-5.3-FlashX` → Qoder 国际版免费 DeepSeek → Qoder 国内版免费 DeepSeek → WorkBuddy 国际版免费 DeepSeek → WorkBuddy 国内版免费工具模型。缺额度或不可用时切换，禁止收费回退。
 
-适合按文件拆分的跨模块开发、独立文稿和多产物任务。你可以在真实桌面查看执行过程，跟踪各包待办，在审批或提问时收到介入卡；异常时先查询原会话，避免重复执行。文件归属用于调度与事后越界检测，不提供操作系统沙箱；同文件、共享构建或数据库写入需串行协调。
+先读 [SKILL.md](SKILL.md)。`workbuddy` 是 `workbuddy-global` 的兼容别名；显式 engine 从该项向后选择，`fallback=false` 固定单项。执行中切换必须确认原会话停止；`unknown` 不重派。执行者完成后仍需主持方独立验收。
 
-| 主持方 | 可指派的桌面执行器 |
-|---|---|
-| Codex | ZCode、WorkBuddy，可逐包混排 |
-| ZCode | WorkBuddy |
-| WorkBuddy | ZCode |
-
-当前没有 Codex 执行适配器。提示词 `executor=both` 仅用于 Codex 主持，不能写成 `plan.engine=both`。仅需在当前聊天内调用子代理时，无需本 Skill。
-
-**环境边界**：Windows 为已验证平台（Node.js >= 22；桌面桥验证绑定 ZCode 3.15.3 / WorkBuddy 5.7.6，任一应用升级后必须重跑 `doctor`，失败即需重新适配——不会假报成功）。macOS 为**实验性适配、未现场验证**：核心逻辑有跨平台单测，darwin 启动器仅语法校验；首次在 Mac 上使用前必读 `references/macos.md` 并执行其验证清单。
-
-## 快速开始（3 步）
+## Windows 快速开始
 
 ```powershell
-# 以下为 Windows、Codex 主持、仅派 ZCode 的最小示例
-# 1. 启动/复用所选桌面（自动处理未开调试端口的实例）
-powershell -NoProfile -File <本skill绝对路径>/scripts/start-desktops.ps1 -Engine zcode
-
-# 2. 预检
-node <本skill绝对路径>/scripts/workflow.mjs doctor zcode
-
-# 3. 在项目根目录派发（先准备 SPEC.md 和 plan.json）
+# 先检查是否有活跃任务；只需一款时使用具体 engine
+powershell -NoProfile -File <本skill绝对路径>/scripts/start-desktops.ps1 -Engine auto
+node <本skill绝对路径>/scripts/workflow.mjs doctor
+# 在项目根目录准备好 SPEC.md、PLAN.md 和 plan.json 后运行
 node <本skill绝对路径>/scripts/workflow.mjs run plan.json
 ```
 
-`examples/plan.example.json` 是双执行器混排样例；仅用 ZCode 时将其中的 `"engine": "workbuddy"` 改为 `"engine": "zcode"`，并相应调整任务标题。双执行器计划需启动 both，并分别 doctor zcode/workbuddy。真实任务的后台启动、状态跟踪和逐包验收见 `references/operations.md`；macOS 启动方式见 `references/macos.md`。
+五款桌面支持独立安装路径；`auto` / `all` 启动五款，旧 `both` 只启动 ZCode 与 WorkBuddy 国际版。启动器可能重启缺调试端口的应用，先保护已有活跃会话。预检不会发模型任务；实际执行能力需单项 smoke 和真实产物验证，不能声称五款已全部可用。macOS 实验性、未真机验证，Bash 启动器仅有旧双客户端入口。
 
-## 文件地图
+| 文件 | 用途 |
+|---|---|
+| [SKILL.md](SKILL.md) | 主持方工作流、候选优先级与截图验收 |
+| [references/operations.md](references/operations.md) | Windows 路径/端口、计划、切换、恢复和验收 |
+| [references/faq.md](references/faq.md) | 桌面不可见、unknown、免费模型和启动排障 |
+| [references/walkthrough.md](references/walkthrough.md) | 历史双客户端实战，模型与优先级以 v1.4.0 Skill 为准 |
+| [references/macos.md](references/macos.md) | 实验性 macOS 边界与验证清单 |
+| [examples/plan.example.json](examples/plan.example.json) | 旧双客户端计划模板，可改为 engine=auto |
+| [examples/SPEC.template.md](examples/SPEC.template.md) | 目标、边界、交付、验收和回退模板 |
+| `scripts/workflow.mjs` | doctor/run/status/watch/open/verify/cancel |
+| `scripts/start-desktops.ps1` | 五款 Windows 桌面启动、复用与保护 |
 
-| 文件 | 用途 | 什么时候读 |
-|---|---|---|
-| `SKILL.md` | 主持方工作流（1-8 步）与硬约束 | 每轮任务开始 |
-| `references/operations.md` | 运行协议：命令速查、plan.json 结构、恢复/取消/回退 | 派发前与日常操作 |
-| `references/faq.md` | 反模式与高频问题集中清单 | 遇到问题时按症状查 |
-| `references/walkthrough.md` | 端到端实战样例（含失败恢复） | 第一次使用前通读 |
-| `references/macos.md` | macOS 实验性适配状态与真机验证清单 | macOS 用户首次使用前必读 |
-| `examples/plan.example.json` | 可拷贝的最小 plan 模板（含混排写法） | 写计划时 |
-| `examples/SPEC.template.md` | SPEC 模板（目标/边界/交付/验收/回退） | 写 Spec 时 |
-| `scripts/workflow.mjs` | 调度入口：run/status/watch/open/verify/cancel | — |
-| `scripts/start-desktops.ps1` | 桌面启动/自动重启/保护 | — |
-
-## 常见任务 → 对应入口
-
-- 第一次跑通 → `references/walkthrough.md`
-- 命令记不住 → `references/operations.md` 顶部速查表
-- 任务没出现在桌面 / verify 报退出码 2 / 连接断开 → `references/faq.md` 按症状查
-- 写计划卡住 → 拷贝 `examples/plan.example.json`
+文件归属不是操作系统沙箱。同文件、共享构建、端口与数据库操作必须协调。没有 Codex 桌面执行适配器；仅在当前聊天内拆子任务无需本 Skill。

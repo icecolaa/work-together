@@ -1,5 +1,13 @@
 # HANDOFF — work-together 新窗口交接
 
+## 2026-10-24 v1.4.0 更新（优先于下文历史记录）
+
+用户要求五级自动选择并发布代码。当前默认 `engine=auto`：ZCode 精确 GLM-5.3-FlashX → Qoder 国际版免费 DeepSeek → Qoder 国内版免费 DeepSeek → WorkBuddy 国际版免费 DeepSeek → WorkBuddy 国内版免费工具模型。不可用按序切换，不收费回退；每候选每包最多一次。已派发结果未知不得重派，故障会话确认停止后才可交接。
+
+五款 Windows 客户端均完成真实文件任务、实际模型核对、原会话显示校验和主持方独立 verify；ZCode 不可用模型 → Qoder 国际版自动回退实测通过。npm test 34/34，生命周期内部25场景。版本及边界见 docs/verification-1.4.0.md。未人为耗尽真实额度，macOS 未真机验证。
+
+根 package.json、源 Skill 和本机安装副本统一1.4.0。五级策略与本节优先于下文1.3.1的Flash/最低付费回退旧记录。代码推送状态以 Git HEAD 和双远程 main 为准。本次代码发布不代表 SkillHub 1.4.0 已提交或审核通过。
+
 更新时间：2026-10-20（Asia/Shanghai）。根据当前聊天、Git、现有验收文档及本次核查整理；只读本文即可判断现状并继续。历史验收与当前运行状态分开记录。
 
 ## 1. 从这里继续

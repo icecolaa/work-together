@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
+import {validEngine,family} from './executors.mjs';
 export function fingerprint(root) {
   const result={};
   function walk(dir,relative='') { for(const item of fs.readdirSync(dir,{withFileTypes:true})) {
@@ -30,12 +31,15 @@ export function ownedPath(root, relative) {
 }
 export function overlap(a,b) { return a===b||a.startsWith(b+path.sep)||b.startsWith(a+path.sep); }
 export function validatePlan(plan,root) {
-  if(!['zcode','workbuddy'].includes(plan.engine))throw Error('engine 必须为 zcode 或 workbuddy');
+  plan.engine??='auto';
+  if(!validEngine(plan.engine))throw Error('engine 必须为 auto 或有效桌面执行器');
+  if(plan.engine==='auto'&&plan.model)throw Error('auto 使用 models 按执行器指定模型，不能把一个 model 应用到不同客户端');
+  if(plan.fallback!==undefined&&typeof plan.fallback!=='boolean')throw Error('fallback 必须为布尔值');
   plan.coordinator??='codex';
-  if(!['codex','zcode','workbuddy'].includes(plan.coordinator))throw Error('coordinator 必须为 codex、zcode 或 workbuddy');
+  if(plan.coordinator!=='codex'&&!validEngine(plan.coordinator)||plan.coordinator==='auto')throw Error('coordinator 必须为 codex 或有效桌面执行器');
   if(!Array.isArray(plan.tasks)||!plan.tasks.length)throw Error('任务包为空');
   if(!Number.isInteger(plan.concurrency)||plan.concurrency<1||plan.concurrency>4)throw Error('concurrency 必须为 1..4');
-  const ids=new Set();for(const t of plan.tasks){if(!/^[a-z0-9-]+$/.test(t.id)||ids.has(t.id))throw Error('任务 ID 非法或重复');ids.add(t.id);if(t.engine&&!['zcode','workbuddy'].includes(t.engine))throw Error('任务包 engine 必须为 zcode 或 workbuddy');if((t.engine||plan.engine)===plan.coordinator)throw Error(`执行器不能与主持方相同：包 ${t.id} 的 engine 是 ${plan.coordinator}；主持方负责 Spec/Plan/Verify，Exec 须指派其他工具`);if(!t.prompt||!t.files?.length||!t.acceptance?.length)throw Error('每包需要 prompt/files/acceptance');t.files.forEach(f=>ownedPath(root,f));}
+  const ids=new Set();for(const t of plan.tasks){if(!/^[a-z0-9-]+$/.test(t.id)||ids.has(t.id))throw Error('任务 ID 非法或重复');ids.add(t.id);if(t.engine&&!validEngine(t.engine))throw Error('任务包 engine 无效');if((t.engine||plan.engine)!=='auto'&&family(t.engine||plan.engine)===family(plan.coordinator))throw Error(`执行器不能与主持方相同：包 ${t.id} 的 engine 是 ${plan.coordinator}；主持方负责 Spec/Plan/Verify，Exec 须指派其他工具`);if(!t.prompt||!t.files?.length||!t.acceptance?.length)throw Error('每包需要 prompt/files/acceptance');t.files.forEach(f=>ownedPath(root,f));}
   const done=new Set();while(done.size<ids.size){const next=plan.tasks.filter(t=>!done.has(t.id)&&(t.dependsOn||[]).every(d=>done.has(d)));if(!next.length)throw Error('依赖存在环或未知任务');next.forEach(t=>done.add(t.id));} return plan;
 }
 export function canStart(task,active,root) { const files=task.files.map(f=>ownedPath(root,f));return active.every(a=>a.files.every(f=>files.every(p=>!overlap(p,ownedPath(root,f))))); }

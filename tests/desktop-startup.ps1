@@ -1,4 +1,4 @@
-﻿param([string]$LifecyclePath)
+param([string]$LifecyclePath)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $script:results = New-Object System.Collections.Generic.List[object]
@@ -219,6 +219,67 @@ Invoke-WtTest 'coordinator app is protected while its scheduler holds the lock' 
     Assert-WtTest (Test-WtActiveWorkflow -Engine 'zcode') 'coordinator app was not protected'
     Assert-WtTest (-not (Test-WtActiveWorkflow -Engine 'workbuddy')) 'executor app was blocked without active jobs'
   } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force }
+}
+
+Invoke-WtTest 'Qoder vscode-file page from the selected installation is accepted' {
+  function Invoke-RestMethod {
+    param($Uri,$TimeoutSec)
+    if ($Uri.EndsWith('/json/version')) { return [pscustomobject]@{webSocketDebuggerUrl='ws://127.0.0.1/test'} }
+    $resourceFile = Join-Path (Split-Path $script:target -Parent) 'resources/app/out/vs/code/electron-sandbox/workbench/workbench.html'
+    $url = ([uri]$resourceFile).AbsoluteUri -replace '^file:///', 'vscode-file://vscode-app/'
+    Write-Output -NoEnumerate @([pscustomobject]@{type='page';url=$url})
+  }
+  Assert-WtTest (Test-WtDebugBridge -Port 19333 -ExecutablePath $script:target) 'Qoder resource page rejected'
+}
+
+Invoke-WtTest 'Qoder launch supplies local debug arguments and stays hidden' {
+  $script:launchArgs = $null
+  $script:launchStyle = $null
+  function Start-Process { param($FilePath,$ArgumentList,$WindowStyle) $script:launchArgs = @($ArgumentList); $script:launchStyle = $WindowStyle }
+  foreach ($engine in @('qoder-global','qoder-cn')) {
+    Invoke-WtDesktopLaunch -Engine $engine -ExecutablePath $script:target -Port 19334
+    Assert-WtTest ($script:launchArgs.Contains('--remote-debugging-port=19334') -and $script:launchArgs.Contains('--remote-debugging-address=127.0.0.1') -and $script:launchStyle -eq 'Hidden') 'Qoder launch arguments or visibility incorrect'
+  }
+}
+
+Invoke-WtTest 'WorkBuddy regions use their port and restore the host environment' {
+  $previous = $env:WORKBUDDY_REMOTE_DEBUGGING_PORT
+  try {
+    $env:WORKBUDDY_REMOTE_DEBUGGING_PORT = 'keep-regional'
+    $script:seenPort = $null
+    $script:launchStyle = $null
+    function Start-Process { param($FilePath,$WindowStyle) $script:seenPort=$env:WORKBUDDY_REMOTE_DEBUGGING_PORT; $script:launchStyle=$WindowStyle }
+    foreach ($engine in @('workbuddy-global','workbuddy-cn')) {
+      Invoke-WtDesktopLaunch -Engine $engine -ExecutablePath $script:target -Port 19335
+      Assert-WtTest ($script:seenPort -eq '19335' -and $env:WORKBUDDY_REMOTE_DEBUGGING_PORT -eq 'keep-regional' -and $script:launchStyle -eq 'Hidden') 'regional WorkBuddy port/environment/visibility incorrect'
+    }
+  } finally { $env:WORKBUDDY_REMOTE_DEBUGGING_PORT = $previous }
+}
+
+Invoke-WtTest 'legacy WorkBuddy active state protects international alias only' {
+  $dir = New-WtRuntime '{"engine":"workbuddy","jobs":{"a":{"status":"running"}}}'
+  Push-Location $dir
+  try {
+    function Get-Process { param($Id,$ErrorAction) return [pscustomobject]@{Id=4321} }
+    Assert-WtTest (Test-WtActiveWorkflow -Engine 'workbuddy-global') 'legacy WorkBuddy job did not protect global alias'
+    Assert-WtTest (-not (Test-WtActiveWorkflow -Engine 'workbuddy-cn')) 'legacy WorkBuddy job blocked unrelated regional app'
+  } finally { Pop-Location; Remove-Item -LiteralPath $dir -Recurse -Force }
+}
+
+Invoke-WtTest 'Qoder custom protocols accept only the matching regional installation' {
+  function Invoke-RestMethod {
+    param($Uri,$TimeoutSec)
+    if ($Uri.EndsWith('/json/version')) { return [pscustomobject]@{webSocketDebuggerUrl='ws://127.0.0.1/test'} }
+    Write-Output -NoEnumerate @([pscustomobject]@{type='page';url=$script:pageUrl})
+  }
+  $globalExe = Join-Path (Split-Path $script:target -Parent) 'Qoder.exe'
+  $cnExe = Join-Path (Split-Path $script:target -Parent) 'Qoder CN.exe'
+  $script:pageUrl = 'qoder-app://renderer/index.html'
+  Assert-WtTest (Test-WtDebugBridge -Port 19333 -ExecutablePath $globalExe) 'global custom protocol rejected'
+  Assert-WtTest (-not (Test-WtDebugBridge -Port 19333 -ExecutablePath $cnExe)) 'global page accepted for CN app'
+  $script:pageUrl = 'qoder-cn-app://renderer/index.html'
+  Assert-WtTest (Test-WtDebugBridge -Port 19334 -ExecutablePath $cnExe) 'CN custom protocol rejected'
+  Assert-WtTest (-not (Test-WtDebugBridge -Port 19334 -ExecutablePath $globalExe)) 'CN page accepted for global app'
 }
 
 ConvertTo-Json -InputObject @($script:results.ToArray()) -Depth 4 -Compress

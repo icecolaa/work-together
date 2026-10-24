@@ -1,13 +1,13 @@
 # 桌面运行协议
 
-已验证环境为 Windows、Node.js >=22（原生 fetch/WebSocket），以及已安装并登录的所选执行器 ZCode / WorkBuddy。当前适配验证目标：ZCode 3.15.3（内置 CLI 0.16.9）、WorkBuddy AI 5.7.6。macOS 为实验性，先读 [macos.md](macos.md)，使用其中的 Bash 启动方式。脚本从 CDP 主窗口调用现有 renderer 服务，不安装或复制模型密钥，不改 app.asar，不使用云端会话替代桌面。
+需要 Windows、Node.js >=22（原生 fetch/WebSocket），以及已安装并登录的候选执行器。v1.4.0 新增 Qoder 国际/国内版、WorkBuddy 国内版候选；历史桌面验证目标为 ZCode 3.15.3 / WorkBuddy AI 5.7.6，新候选按本机 doctor 和 smoke 的实际结果报告。macOS 为实验性，先读 [macos.md](macos.md)，使用其中的 Bash 启动方式。脚本从 CDP 主窗口调用现有 renderer 服务，不安装或复制模型密钥，不改 app.asar，不使用云端会话替代桌面。
 
 ## 命令速查
 
 | 命令 | 用途 | 何时用 |
 |---|---|---|
-| `start-desktops.ps1 -Engine both` | 启动/复用两款桌面（自动重启未开调试端口的实例） | 每次开工前 |
-| `workflow.mjs doctor [zcode\|workbuddy]` | 预检桌面桥与模型策略 | 启动后、排障时 |
+| `start-desktops.ps1 -Engine auto` | 按五级列表启动/复用桌面（可能重启缺调试端口的实例） | 每次开工前 |
+| `workflow.mjs doctor [engine]` | 预检桌面桥与模型策略 | 启动后、排障时 |
 | `workflow.mjs run plan.json` | 派发并调度全部任务包（后台长驻） | 计划就绪后 |
 | `workflow.mjs run plan.json --resume` | 复用原会话恢复（先确认旧进程已退出） | 调度器意外退出后 |
 | `workflow.mjs status` | 当前各包状态与可见性（JSON） | 随时轮询 |
@@ -23,11 +23,25 @@
 直接执行启动脚本，无需先手动退出托盘里的应用：
 
 ```powershell
-powershell -NoProfile -File <skill绝对路径>/scripts/start-desktops.ps1 -Engine both
-node <skill绝对路径>/scripts/workflow.mjs doctor zcode
+powershell -NoProfile -File <skill绝对路径>/scripts/start-desktops.ps1 -Engine auto
+node <skill绝对路径>/scripts/workflow.mjs doctor
 ```
 
-端口仅本机：ZCode=19331，WorkBuddy=19332。WorkBuddy 路径可用 `-WorkBuddyPath` 覆盖，ZCode 用 `-ZCodePath`。已经开启调试端口的实例直接复用；未开启端口的实例由脚本先关闭窗口，等待默认 5 秒，托盘或后台进程仍未退出时自动终止同一安装路径的剩余进程，再重新启动并等待桌面会话就绪。应用配置、账号与本地会话文件保留。脚本只关闭所选执行器，不要求用户逐次手动退出。
+端口仅本机，安装路径可以逐项覆盖：
+
+| 执行器 | 端口 | 路径参数 | 默认路径 |
+|---|---|---|---|
+| `zcode` | 19331 | `-ZCodePath` | `%LOCALAPPDATA%/Programs/ZCode/ZCode.exe` |
+| `qoder-global` | 19333 | `-QoderGlobalPath` | `E:/Qoder/Qoder.exe` |
+| `qoder-cn` | 19334 | `-QoderCNPath` | `E:/Qoder CN/Qoder CN.exe` |
+| `workbuddy-global` | 19332 | `-WorkBuddyGlobalPath` | `E:/workbuddy/WorkBuddyAI/WorkBuddyAI.exe` |
+| `workbuddy-cn` | 19335 | `-WorkBuddyCNPath` | `E:/workbuddyCN/WorkBuddy.exe` |
+
+`-WorkBuddyPath` 和 engine `workbuddy` 保留为国际版兼容入口。`auto` / `all` 启动五款，`both` 只启动旧 ZCode + WorkBuddy 国际版。多客户端启动遇到一项失败会继续其余项，最后汇总并返回失败，不把部分成功声称为全部就绪。可只启动下一款具体 engine，避免无谓重启其他应用。
+
+ZCode / Qoder 通过 `--remote-debugging-address=127.0.0.1 --remote-debugging-port=<端口>` 启动；WorkBuddy 两版使用启动进程环境变量 `WORKBUDDY_REMOTE_DEBUGGING_PORT`，随后恢复宿主原值。启动窗口为 Hidden。已开启端口且主页面属于所选安装目录的实例直接复用；否则先正常退出，默认等 5 秒，再仅终止同一安装路径的余留进程，重新启动后等待桥就绪。账号和本地会话文件保留。
+
+启动前检查其他项目和人工会话：当前项目保护无法证明其他项目没有活跃任务，不得为了候选预检中断已有执行。已有健康国际版 WorkBuddy 无需为国内版预检重启。
 
 若当前项目目录的调度记录显示该执行器仍有运行中任务，或该执行器正是当前主持方且调度器仍持锁，默认停止重启。用户明确要中断时可加 `-ForceRestart`，该参数也可用于重启已开启调试端口的实例。重启后先查询旧会话，按需要 `--resume`，不自动重派任务。`-GraceSeconds` 可调整正常退出等待时间，`-StartupTimeoutSeconds` 可调整启动超时。调试端口有本地应用控制能力，不转发、不暴露外网；使用后正常退出应用、普通方式重新打开即可关闭。升级导致私有桥变化时 doctor/run 必须明确失败，先修适配，不继续假报成功。
 
@@ -36,17 +50,21 @@ node <skill绝对路径>/scripts/workflow.mjs doctor zcode
 ```json
 {
   "coordinator": "codex",
-  "engine": "zcode",
+  "engine": "auto",
   "concurrency": 2,
   "spec": "SPEC.md",
   "tasks": [
     {"id":"draft-a","title":"第一篇草稿","files":["drafts/a.md"],"dependsOn":[],"prompt":"按 Spec 写第一篇草稿，不发布。","acceptance":["文件非空，包含规定的十张图片引用"]},
-    {"id":"draft-b","title":"第二篇草稿","engine":"workbuddy","files":["drafts/b.md"],"dependsOn":[],"prompt":"按 Spec 写第二篇草稿，不发布。","acceptance":["文件非空，包含规定的十张图片引用"]}
+    {"id":"draft-b","title":"第二篇草稿","engine":"workbuddy-global","files":["drafts/b.md"],"dependsOn":[],"prompt":"按 Spec 写第二篇草稿，不发布。","acceptance":["文件非空，包含规定的十张图片引用"]}
   ]
 }
 ```
 
-顶层 `coordinator`（codex|zcode|workbuddy，缺省 codex）声明主持方——运行本 skill、负责 Spec/Plan/Verify 的聊天所在的工具；调度器拒绝 engine 与主持方相同的任务包，Exec 必须指派其他工具。主持方自身的桌面无需调试端口，只有执行器桌面需要。调度器按各包 engine 连接对应桌面；`open`、`cancel` 和验收自动使用该包自己的执行器。多款工具同时参与时，不同执行器的包在同一目录同样受文件归属与并发约束；顶层 `model`/`mode`/`permissionMode` 会应用到所有参与的执行器，混排计划建议不设顶层 `model`，让各工具使用默认模型。
+顶层 `coordinator` 声明主持方（缺省 codex）；不能把 Exec 派给同一主持工具。主持方自身无需调试端口，只有执行器需要。engine 缺省或 `auto` 按五级列表选择；显式 engine 从该项开始依次向后回退，`fallback=false` 锁定该项，适合逐项 smoke。任务可覆写 engine；混排/自动回退时避免顶层固定跨工具 model。`open`、`cancel` 和验收均使用该包当前实际执行器。
+
+候选顺序与模型固定为：`zcode` 精确 `GLM-5.3-FlashX` → `qoder-global` 免费 DeepSeek → `qoder-cn` 免费 DeepSeek → `workbuddy-global` 免费 DeepSeek → `workbuddy-cn` 免费工具模型。后四项必须从当次桌面元数据确认明确零费率，Auto、未知、空费率和收费模型均被排除。无免费候选不启用最低付费选项。用户授权此顺序下的自动切换，无需重复确认。
+
+预检失败可继续下一候选；每任务每候选最多尝试一次。创建/发送结果不明或失联记 `unknown`，不能重派。运行中发生不可用/额度失败，必须确认原会话进入终态并停止后，才可把原会话 ID、失败原因、已有产物和剩余任务交给下一项；错误文本不是停止证明。所有候选耗尽后保留证据并报告。
 
 在项目根目录运行；脚本路径可以在已安装 skill 目录：
 
@@ -83,6 +101,12 @@ node $runner run plan.json --resume
 
 依赖包等前置包 verified；主持方尚未复核时 `run` 会继续驻留。`verify` 仅记录人工/主代理提供的证据路径，并不自动证明内容真实；主代理必须实际检查。运行前保存文件指纹，收口和验收时检测归属范围外的新增、修改和删除；发现后阻断验收，退出码为 2，不自动回退。这是事后检测，不是写入拦截。证据与运行日志放 `.work-together`，避免被当作执行包的越界写入。
 
-ZCode 默认 `mode=yolo`（完全访问）、`model=GLM-5.3-Flash`；每次发送都明确指定模型，且从当前桌面供应商目录检查其可用性。WorkBuddy 默认 `permissionMode=bypassPermissions`（允许完全访问），模型按本机 `wb.models.list()` 的 credits 动态选：优先零费率，若无则选最低已知费率并报告；Auto/空费率不能据此视为免费。零费率同档优先 Step-5-Preview、Deepseek-V4.1-Flash、Hy3，仅在列表显示该模型费率为零时适用。服务方计费信息可能变化，记录的是本次选择时的桌面报价，不保证永久免费。
+ZCode 默认 `mode=yolo`（完全访问）、`model=GLM-5.3-FlashX`；每次发送都明确指定模型，并检查当前桌面供应商目录。WorkBuddy 默认 `permissionMode=bypassPermissions`；国际版仅接受明确零费率 DeepSeek，国内版接受明确零费率工具模型。Qoder 两版也只接受当次目录证明免费的 DeepSeek，并使用桥实际支持的权限模式。费率属于本次选择证据，不保证未来仍免费。
 
-可在 plan.json 顶层明确覆盖 `model`、ZCode 的 `mode`、WorkBuddy 的 `permissionMode`。例如 ZCode 的 `{"engine":"zcode","model":"GLM-5.3-Flash","mode":"yolo",...}`。这些设置应用于新建协作会话，不修改所有项目的全局配置，不打断已有任务。共享工作日志/记忆需由主持方统一写，执行者不得写 `.workbuddy-ai/memory` 等共享文件。并发同目录不能隔离全局安装、端口、数据库、生成目录；计划者要避免这些冲突。首次启动的文件指纹会读取项目普通文件，大型目录的启动检查可能较慢。
+权限覆盖须由适配器支持；模型覆盖也不能绕过免费候选规则。设置作用于新建协作会话，不改其他项目全局配置。执行者不得写 `.workbuddy-ai/memory`、`MEMORY.md` 等共享文件；共享日志由主持方统一写。文件指纹读取项目普通文件，大型目录可能较慢。
+
+## 网页与小程序截图
+
+截图包应列出真实页面、打开步骤、必要的登录状态、尺寸、输出路径及文章回填位置。由实际可用的执行器工具操作浏览器或小程序界面并截图；本 Skill 负责调度，不假定每款助手都具备相同的截图能力。记录页面来源、截图时间、结果路径；无法打开或登录时明确列缺口。
+
+验收需要同时检查图片真实可打开、界面与文章主张相符、文稿已引用所有必需截图、最终 HTML/文档中的图片可渲染。文件数量满足不代表截图完整，不能用生成图代替应有的产品截图。

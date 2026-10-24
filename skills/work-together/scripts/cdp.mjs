@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { ZCODE_DEFAULTS, selectZCodeModel, selectWorkBuddyModel } from './model-policy.mjs';
+import {normalizeEngine, EXECUTOR_PORTS} from './executors.mjs';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -13,7 +14,11 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 // "/Applications/ZCode.app/Contents/Resources/app.asar/...". Match the app
 // name followed by a resources segment, case-insensitive, both separators.
 export function matchesDesktopPage(engine, url) {
-  if (typeof url !== 'string' || !url.startsWith('file:')) return false;
+  engine=normalizeEngine(engine);
+  if (typeof url !== 'string') return false;
+  if(engine==='qoder-global')return url.startsWith('qoder-app://renderer/');
+  if(engine==='qoder-cn')return url.startsWith('qoder-cn-app://renderer/');
+  if(!url.startsWith('file:'))return false;
   return engine === 'zcode'
     ? /zcode[^\s]*?[/\\]resources/i.test(url)
     : /workbuddy[^\s]*?[/\\]resources/i.test(url);
@@ -44,9 +49,9 @@ export function deriveZCodeExecutable(pageUrl, platform = process.platform) {
 }
 
 export class Desktop {
-  constructor(engine, port = engine === 'zcode' ? 19331 : 19332, options = {}) {
-    this.engine = engine;
-    this.port = port;
+  constructor(engine, port, options = {}) {
+    this.engine = normalizeEngine(engine);
+    this.port = port ?? EXECUTOR_PORTS[this.engine];
     this.options = options;
     this.pending = new Map();
     this.seq = 0;
@@ -55,7 +60,7 @@ export class Desktop {
 
   async connect() {
     const pages = await (await fetch(`http://127.0.0.1:${this.port}/json/list`, { signal: AbortSignal.timeout(5000) })).json();
-    const page = pages.find(p => p.type === 'page' && matchesDesktopPage(this.engine, p.url));
+    const page = pages.find(p => p.type === 'page' && this.isTargetPage(p.url));
     if (!page) throw Error(`未找到 ${this.engine} 主窗口`);
     this.pageUrl = page.url;
     this.ws = new WebSocket(page.webSocketDebuggerUrl);
@@ -74,9 +79,23 @@ export class Desktop {
       }
       this.pending.clear();
     };
-    if (this.engine === 'zcode') await this.bootstrapZCode();
-    else await this.eval(`(()=>{if(!window.wb?.conversations?.create)throw Error('WorkBuddy 桌面 SDK 不可用');return true})()`);
+    await this.bootstrap();
     return this;
+  }
+
+  isTargetPage(url) { return matchesDesktopPage(this.engine,url); }
+
+  async bootstrap() {
+    if(this.engine==='zcode'){
+      let last;
+      for(let attempt=0;attempt<30;attempt++){try{return await this.bootstrapZCode();}catch(error){last=error;await sleep(500);}}
+      throw last;
+    }
+    for(let attempt=0;attempt<40;attempt++) {
+      if(await this.eval(`!!window.wb?.conversations?.create`))return;
+      await sleep(500);
+    }
+    throw Error('WorkBuddy 桌面 SDK 不可用（等待初始化20秒后）');
   }
 
   async bootstrapZCode() {
@@ -91,10 +110,13 @@ export class Desktop {
       window.__wtServices=services;
       const src=[...document.scripts].map(s=>s.src).find(s=>/\\/assets\\/index-/.test(s));
       const source=await(await fetch(src)).text();
-      const filename=source.match(/skillStore-[A-Za-z0-9_-]+\\.js/)?.[0];
-      if(!filename)throw Error('找不到 ZCode 会话导航模块');
-      const module=await import(new URL(filename,src).href);
-      const store=Object.values(module).find(s=>typeof s?.getState==='function'&&typeof s.getState().setActiveTaskId==='function');
+      const files=[...new Set(source.match(/(?:skillStore|subagentsStore)-[A-Za-z0-9_-]+\\.js/g)||[])];
+      let store;
+      for(const filename of files){
+        const module=await import(new URL(filename,src).href);
+        store=Object.values(module).find(s=>typeof s?.getState==='function'&&typeof s.getState().setActiveTaskId==='function');
+        if(store)break;
+      }
       if(!store)throw Error('ZCode 会话导航接口已变化');
       window.__wtSessionStore=store;return true;
     })()`);
@@ -125,7 +147,7 @@ export class Desktop {
       this.modelPolicy = { ...selectZCodeModel(view, this.options.model), mode: this.options.mode || ZCODE_DEFAULTS.mode };
     } else {
       const models = await this.eval(`(async()=>{const r=await wb.models.list();return (r.items||[]).map(m=>({id:m.id,credits:m.credits,supportsToolCall:m.supportsToolCall,disabled:m.disabled}))})()`);
-      this.modelPolicy = { ...selectWorkBuddyModel(models, this.options.model), permissionMode: this.options.permissionMode || 'bypassPermissions' };
+      this.modelPolicy = { ...selectWorkBuddyModel(models, this.options.model, {deepseekOnly:this.engine!=='workbuddy-cn'}), permissionMode: this.options.permissionMode || 'bypassPermissions' };
     }
     return this.modelPolicy;
   }
@@ -133,7 +155,7 @@ export class Desktop {
   async create(cwd, title) {
     const model = await this.resolveModel();
     let id;
-    if (this.engine === 'workbuddy') {
+    if (this.engine.startsWith('workbuddy')) {
       id = await this.eval(`(async()=>{const c=await wb.conversations.create(${JSON.stringify({ cwd, title, mode: 'craft', transport: 'local' })});
         if(!c?.info?.id)throw Error(JSON.stringify(c));
         for(const result of [await c.configManager.setPermissionMode(${JSON.stringify(model.permissionMode)}),await c.configManager.setModel(${JSON.stringify(model.id)})]){
@@ -195,15 +217,19 @@ export class Desktop {
   }
 
   visibilityExpression(cwd, id, marker = '', select = false) {
-    if (this.engine === 'workbuddy') return `(()=>{const route=wb.navigation.route;const text=document.body.innerText;
+    if (this.engine.startsWith('workbuddy')) return `(()=>{const route=wb.navigation.route;const text=document.body.innerText;
       const selected=typeof route==='string'&&route.split('?')[0]===${JSON.stringify('/conversation/' + id)}&&wb.conversations.currentId===${JSON.stringify(id)};
       const transcriptVisible=${JSON.stringify(marker)}?text.includes(${JSON.stringify(marker)}):text.includes('今天帮你做些什么');
       return {sessionId:${JSON.stringify(id)},workspace:${JSON.stringify(cwd)},selected,transcriptVisible,confirmed:selected&&transcriptVisible}})()`;
     return `(()=>{const cwd=${JSON.stringify(cwd)},id=${JSON.stringify(id)},marker=${JSON.stringify(marker)};
       const store=window.__wtSessionStore?.getState();
-      const workspace=document.querySelector('[data-testid='+CSS.escape('workspace-item-'+cwd)+']');
-      if(${select}&&workspace){store.setActiveTaskId(cwd,id);store.requestTimelineBottom(cwd,id)}
+      const legacyWorkspace=document.querySelector('[data-testid='+CSS.escape('workspace-item-'+cwd)+']');
+      if(${select}){store.setActiveTaskId(cwd,id);store.requestTimelineBottom(cwd,id)}
       const item=document.querySelector('[data-testid='+CSS.escape('task-item-'+id)+']');
+      const projectName=cwd.split(/[\\\\/]/).pop();
+      const project=item?.closest?.('section[data-project-id]')||document.querySelector('section[data-project-name='+CSS.escape(projectName)+']');
+      const workspace=legacyWorkspace||(project?.getAttribute?.('data-project-name')===projectName?project:null);
+      if(${select}&&workspace)workspace.scrollIntoView?.({block:'nearest'});
       if(${select}&&item){item.scrollIntoView({block:'nearest'});if(!item.classList.contains('bg-selected'))item.click()}
       const selected=!!item&&item.classList.contains('bg-selected')&&store?.getWorkspaceState(cwd)?.activeTaskId===id;
       const workspaceVisible=!!workspace&&workspace.getClientRects().length>0;

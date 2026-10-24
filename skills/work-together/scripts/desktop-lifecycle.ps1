@@ -1,4 +1,10 @@
-﻿function Get-WtAppProcesses {
+﻿function ConvertTo-WtEngine {
+  param([string]$Engine)
+  if ($Engine -eq 'workbuddy') { return 'workbuddy-global' }
+  return $Engine
+}
+
+function Get-WtAppProcesses {
   param([string]$ExecutablePath)
   $processName = [IO.Path]::GetFileNameWithoutExtension($ExecutablePath)
   @(Get-Process -Name $processName -ErrorAction SilentlyContinue | Where-Object {
@@ -16,10 +22,15 @@ function Test-WtDebugBridge {
     $pages = Invoke-RestMethod "http://127.0.0.1:$Port/json/list" -TimeoutSec 2
     $resourceRoot = (Join-Path (Split-Path $ExecutablePath -Parent) 'resources') + [IO.Path]::DirectorySeparatorChar
     foreach ($page in $pages) {
-      if ($page.type -ne 'page' -or -not $page.url -or -not $page.url.StartsWith('file:')) { continue }
+      if ($page.type -ne 'page' -or -not $page.url) { continue }
+      $appName = [IO.Path]::GetFileNameWithoutExtension($ExecutablePath)
+      if ($appName -eq 'Qoder' -and $page.url.StartsWith('qoder-app://renderer/')) { return $true }
+      if ($appName -eq 'Qoder CN' -and $page.url.StartsWith('qoder-cn-app://renderer/')) { return $true }
+      if (-not $page.url.StartsWith('file:') -and -not $page.url.StartsWith('vscode-file://vscode-app/')) { continue }
       # .NET Framework treats file URL queries as part of LocalPath; strip the
       # URL query/fragment before decoding to keep PowerShell 5.1 compatible.
       $fileUrl = ($page.url -split '[?#]', 2)[0]
+      if ($fileUrl.StartsWith('vscode-file://vscode-app/')) { $fileUrl = 'file:///' + $fileUrl.Substring('vscode-file://vscode-app/'.Length) }
       $pagePath = [IO.Path]::GetFullPath(([uri]$fileUrl).LocalPath)
       if ($pagePath.StartsWith($resourceRoot, [StringComparison]::OrdinalIgnoreCase)) { return $true }
     }
@@ -29,6 +40,7 @@ function Test-WtDebugBridge {
 
 function Test-WtActiveWorkflow {
   param([string]$Engine)
+  $Engine = ConvertTo-WtEngine $Engine
   $runtimeDir = Join-Path (Get-Location).Path '.work-together'
   $lockFile = Join-Path $runtimeDir 'runner.lock'
   if (-not (Test-Path -LiteralPath $lockFile)) { return $false }
@@ -46,14 +58,14 @@ function Test-WtActiveWorkflow {
   # to codex, which start-desktops never restarts.
   $coordinator = $state.coordinator
   if (-not $coordinator) { $coordinator = 'codex' }
-  if ($coordinator -eq $Engine) { return $true }
+  if ((ConvertTo-WtEngine $coordinator) -eq $Engine) { return $true }
   # Protect the restart when any active job belongs to this engine; older
   # states without per-job engines fall back to the plan-level engine.
   $active = @($state.jobs.PSObject.Properties.Value | Where-Object { $_.status -in @('running', 'needs_user', 'unknown', 'creating', 'dispatching') })
   return @($active | Where-Object {
     $jobEngine = $_.engine
     if (-not $jobEngine) { $jobEngine = $state.engine }
-    $jobEngine -eq $Engine
+    (ConvertTo-WtEngine $jobEngine) -eq $Engine
   }).Count -gt 0
 }
 
@@ -95,15 +107,15 @@ function Stop-WtDesktop {
 
 function Invoke-WtDesktopLaunch {
   param([string]$Engine, [string]$ExecutablePath, [int]$Port)
-  if ($Engine -eq 'zcode') {
+  if ($Engine -in @('zcode','qoder-global','qoder-cn')) {
     Start-Process -FilePath $ExecutablePath -ArgumentList "--remote-debugging-address=127.0.0.1", "--remote-debugging-port=$Port" -WindowStyle Hidden
-  } else {
+  } elseif ($Engine -in @('workbuddy','workbuddy-global','workbuddy-cn')) {
     $previous = $env:WORKBUDDY_REMOTE_DEBUGGING_PORT
     try {
       $env:WORKBUDDY_REMOTE_DEBUGGING_PORT = [string]$Port
       Start-Process -FilePath $ExecutablePath -WindowStyle Hidden
     } finally { $env:WORKBUDDY_REMOTE_DEBUGGING_PORT = $previous }
-  }
+  } else { throw "未知桌面执行器：$Engine" }
 }
 
 function Wait-WtDebugBridge {
