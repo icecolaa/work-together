@@ -2,7 +2,7 @@
 name: work-together
 description: 当用户要求 Codex、ZCode、Qoder 或 WorkBuddy 跨工具协作、在真实桌面中并行处理同一项目时使用。当前聊天负责规划与独立验收，ZCode / Qoder / WorkBuddy 桌面负责执行，提供文件归属调度、进度跟踪和原会话恢复。仅在当前聊天内部拆分任务或调用子代理时不使用。
 slug: work-together
-version: 1.4.0
+version: 1.5.0
 displayName: Work Together · 跨工具桌面协作
 summary: 在真实 ZCode / Qoder / WorkBuddy 桌面中并行完成同一项目：当前聊天拆包规划，按文件归属调度、跟踪待办与人工介入，并逐包独立验收；异常复用原会话恢复。Windows 五级候选按本机预检判定，macOS 实验性。
 tags: [collaboration, multi-agent, desktop-automation, codex, zcode, qoder, workbuddy]
@@ -57,7 +57,7 @@ ZCode 默认权限为 `yolo`，Qoder 与 WorkBuddy 为 `bypassPermissions`。用
 4. 在能承载后台进程的宿主中运行 `workflow.mjs run <plan.json>`，工作目录为项目根；Windows 隐藏窗口，stdout/stderr 重定向到 `.work-together` 或用户指定本地日志路径。headless 环境若会回收子进程，按运行说明交由可承载后台的调用方启动；不要反复绕过进程策略。主聊天仅报告状态变化、交付结果和人工决策。
 5. 使用当前主持环境真实提供的计划工具（若有）同步任务；没有则维护 PLAN.md 的勾选项。定期读紧凑 status/watch，主会话在本轮保持跟进，独立工作完成后再收尾。skill 本身不能在主持方回合结束后主动唤醒聊天：只有配置了可用的宿主通知机制才能承诺跨回合自动汇报。
 6. 状态包括 queued、running、needs_user、exec_done、verified、failed、unknown、blocked、cancelled。needs_user 时自动定位该会话并给出简短回顾卡：完成了什么、卡在哪里、具体需回答什么、项目绝对路径、会话标题/ID、下一步。普通轮询不抢用户当前选中的会话。通过执行器原生待办维护本包进度，不把主持方的总计划假称为外部工具原生全局计划。后台其他无依赖包可继续。
-7. 业务问题或超出 Spec 的新操作仍需用户判断。审批模式下，已有明确授权且与 Spec 完全相符的操作可批准一次。失联/超时先查原会话，unknown 不重派；取消后确认停止再释放文件归属。恢复复用持久会话 ID，同项目只允许一个调度器；恢复前确认原 runner 已退出。
+7. 业务问题或超出 Spec 的新操作仍需用户判断。审批模式下，已有明确授权且与 Spec 完全相符的操作可批准一次。失联/超时先查原会话，unknown 不重派；取消后确认停止再释放文件归属。恢复复用持久会话 ID，同项目只允许一个调度器；恢复前确认原 runner 已退出。主持方工具失联时，可由其他工具 `workflow.mjs takeover <执行器>` 接管：写入 coordinatorHistory，接管后的派发排除现任主持方同族执行器；由现任主持方**同族**执行且未验收的包默认拒绝自验，需 `verify <包ID> <证据> --self-review` 显式登记（记录 reviewer/selfReviewed），或交由其他工具/原主持方复核；`run --resume` 始终按初始主持方校验。
 8. 网页或小程序需要截图时，把页面/路线、登录前提、截图尺寸、输出文件名与回填位置写入任务包，由所选执行器使用其实际可用的浏览器或桌面工具截图。记录来源与截图时间，并检查图片文件真实可打开、内容对应文章、最终文稿引用全部存在。截图失败列为缺口，不用生成图冒充产品界面。
 9. Exec 结束仅记 exec_done。你逐项读取真实产物、检查 diff、独立运行适合改动的测试，必要时看截图/控制台/应用后台状态，证据映射到 Spec 条件。失败退回原会话修复。将独立验收记录交给 `verify` 命令；不能仅凭执行者“通过”结案。所有包 verified 后交付，更新 PLAN.md 并给出简洁总报告。
 

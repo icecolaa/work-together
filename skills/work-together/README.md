@@ -1,6 +1,6 @@
 # Work Together · 跨工具桌面协作
 
-主持聊天管理 Spec / Plan / Verify，桌面助手执行 Exec。v1.4.0 默认 `engine=auto`，优先顺序为 ZCode `GLM-5.3-FlashX` → Qoder 国际版免费 DeepSeek → Qoder 国内版免费 DeepSeek → WorkBuddy 国际版免费 DeepSeek → WorkBuddy 国内版免费工具模型。缺额度或不可用时切换，禁止收费回退。
+主持聊天管理 Spec / Plan / Verify，桌面助手执行 Exec。v1.5.0 支持主持方接管（takeover + 自验登记）；v1.4.0 起默认 `engine=auto`，优先顺序为 ZCode `GLM-5.3-FlashX` → Qoder 国际版免费 DeepSeek → Qoder 国内版免费 DeepSeek → WorkBuddy 国际版免费 DeepSeek → WorkBuddy 国内版免费工具模型。缺额度或不可用时切换，禁止收费回退。
 
 先读 [SKILL.md](SKILL.md)。`workbuddy` 是 `workbuddy-global` 的兼容别名；显式 engine 从该项向后选择，`fallback=false` 固定单项。执行中切换必须确认原会话停止；`unknown` 不重派。执行者完成后仍需主持方独立验收。
 

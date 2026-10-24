@@ -2,6 +2,8 @@
 
 当前聊天负责 Spec / Plan / Verify，把 Exec 交给其他工具的真实桌面会话。按文件归属拆包、跟踪原生待办与审批，并逐包独立验收。适用于代码、文章、网页/小程序截图与多产物工作流。
 
+v1.5.0 新增主持方接管：`workflow.mjs takeover <执行器>` 移交主持权（写入 coordinatorHistory，派发排除同族）；接管后同族未验收包默认拒绝自验，`verify --self-review` 显式登记，`run --resume` 按初始主持方校验。
+
 v1.4.0 默认 `engine=auto`，按用户授权的五级顺序选择助手：
 
 | 优先级 | 执行器 | 模型 |

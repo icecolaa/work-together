@@ -4,7 +4,7 @@ import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {Desktop} from './cdp.mjs';
 import {validatePlan,canStart,atomicJson,summarize,fingerprint,boundaryChanges} from './core.mjs';
-import {EXECUTOR_ORDER,normalizeEngine,candidates,selectExecutor,stopped,confirmStopped} from './executors.mjs';
+import {EXECUTOR_ORDER,normalizeEngine,candidates,selectExecutor,stopped,confirmStopped,family} from './executors.mjs';
 async function connect(engine,options={}) {
   engine=normalizeEngine(engine);
   const Type=engine.startsWith('qoder')?(await import('./qoder.mjs')).QoderDesktop:Desktop;
@@ -25,7 +25,7 @@ function render(state) {
   const jobs=Object.values(state.jobs),used=[...new Set(jobs.map(j=>j.engine).filter(Boolean))],mixed=used.length>1;
   const engineLabel=used.length>1?`${used.join(' + ')}（默认 ${state.engine}）`:used[0]||state.engine;
   const cols=['包','状态',...(mixed?['引擎']:[]),'桌面显示已确认','桌面会话'];
-  const lines=['# 协作进度','',`主持方：${state.coordinator||'codex'} · 执行器：${engineLabel} · 更新：${new Date().toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}`,`模型与权限：${JSON.stringify(state.modelPolicy||{})}`,'',`| ${cols.join(' | ')} |`,'|'+cols.map(()=>'---').join('|')+'|',...jobs.map(j=>`| ${j.id} | ${j.status} | ${mixed?`${j.engine||state.engine} | `:''}${j.visibility?.confirmed?'是':'未确认'} | ${j.sessionId||'待派发'} |`)];
+  const lines=['# 协作进度','',`主持方：${state.coordinator||'codex'}${state.coordinatorHistory?.length?`（接管自 ${state.coordinatorHistory[0].from}）`:''} · 执行器：${engineLabel} · 更新：${new Date().toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}`,`模型与权限：${JSON.stringify(state.modelPolicy||{})}`,'',`| ${cols.join(' | ')} |`,'|'+cols.map(()=>'---').join('|')+'|',...jobs.map(j=>`| ${j.id} | ${j.status} | ${mixed?`${j.engine||state.engine} | `:''}${j.visibility?.confirmed?'是':'未确认'} | ${j.sessionId||'待派发'} |`)];
   lines.push('','exec_done = 执行者交回，待主持方独立验收。needs_user = 到对应桌面会话处理权限/问题。');
   if(state.boundaryViolations?.length)lines.push('',`验收阻断：发现归属清单外的变更：${state.boundaryViolations.join('、')}。需主代理查明来源与修复。`);
   for(const j of jobs)for(const h of j.history||[])lines.push('',`${j.id}：跳过/交接 ${h.engine}，${h.reason||h.status}，原会话 ${h.sessionId||'尚未创建'}`);
@@ -34,39 +34,63 @@ function render(state) {
 }
 async function main(){
   if(cmd==='doctor') { const engines=!args[0]||args[0]==='auto'?EXECUTOR_ORDER:[normalizeEngine(args[0])];for(const engine of engines){let d;try{if(!EXECUTOR_ORDER.includes(engine))throw Error('未知执行器');d=await connect(engine);console.log(`${engine}: desktop bridge OK; ${JSON.stringify(await d.resolveModel())}`);}catch(e){console.log(`${engine}: 不可用：${e.message}`);process.exitCode=1;}finally{d?.close();}}return; }
-  if(cmd==='status'){const s=read(stateFile);console.log(JSON.stringify({engine:s.engine,coordinator:s.coordinator,modelPolicy:s.modelPolicy,jobs:Object.values(s.jobs).map(({id,status,sessionId,error,summary,visibility,engine,history})=>({id,status,sessionId,error,summary,visibility,engine,history}))},null,2));return;}
+  if(cmd==='status'){const s=read(stateFile);console.log(JSON.stringify({engine:s.engine,coordinator:s.coordinator,coordinatorHistory:s.coordinatorHistory,modelPolicy:s.modelPolicy,jobs:Object.values(s.jobs).map(({id,status,sessionId,error,summary,visibility,engine,history,selfReviewed})=>({id,status,sessionId,error,summary,visibility,engine,history,selfReviewed}))},null,2));return;}
   if(cmd==='open'){const s=read(stateFile),j=s.jobs[args[0]];if(!j?.sessionId)throw Error('未知任务包，不能打开不存在的会话');const d=await connect(j.engine||s.engine);try{const proof=await showJob(d,j,`协作任务包：${j.id}`);console.log(JSON.stringify(proof,null,2));if(!proof.confirmed)process.exitCode=2;}finally{d.close();}return;}
   if(cmd==='watch'){let previous='';for(;;){const x=read(stateFile),signature=Object.values(x.jobs).map(j=>`${j.id}: ${j.status}`).join(' | ');if(signature!==previous){previous=signature;console.log(signature);}if(Object.values(x.jobs).every(j=>['exec_done','verified','failed','unknown','cancelled','blocked'].includes(j.status)))return;await sleep(3000);} }
   if(cmd==='verify'){
-    const [id,evidence]=args,s=read(stateFile),j=s.jobs[id];if(!j||j.status!=='exec_done')throw Error('仅能验收 exec_done 的包');
+    const selfReview=args.includes('--self-review');
+    const [id,evidence]=args.filter(a=>a!=='--self-review'),s=read(stateFile),j=s.jobs[id];
+    if(!j||j.status!=='exec_done')throw Error('仅能验收 exec_done 的包');
+    if(s.coordinatorHistory?.length&&family(j.engine||'')===family(s.coordinator||'codex')&&!selfReview)
+      throw Error(`接管后该包由现任主持方(${s.coordinator})同族执行，自验不成立：加 --self-review 显式登记，或交由其他工具/原主持方复核`);
     const visible=fs.existsSync(visibilityFile(id))?read(visibilityFile(id)):j.visibility;
     if(!visible?.confirmed||visible.sessionId!==j.sessionId||visible.workspace!==root)throw Error('尚未确认目标桌面会话可见；先执行 open '+id+'，核对执行过程后再验收');
     const currentViolations=s.baseline?boundaryChanges(s.baseline,fingerprint(root),read(s.planFile).tasks,root):s.boundaryViolations;
     if(currentViolations?.length)throw Error('存在归属清单外变更，必须先修复或重新明确 Spec：'+currentViolations.join(', '));
     const file=path.resolve(evidence||'');if(!evidence||!fs.statSync(file).isFile()||!fs.readFileSync(file,'utf8').trim())throw Error('必须提供主持方独立验收证据文件');
     j.visibility=visible;
-    fs.mkdirSync(path.join(dir,'controls'),{recursive:true});atomicJson(path.join(dir,'controls',id+'.json'),{action:'verified',evidence:file,visibility:visible});
+    fs.mkdirSync(path.join(dir,'controls'),{recursive:true});atomicJson(path.join(dir,'controls',id+'.json'),{action:'verified',evidence:file,visibility:visible,reviewer:s.coordinator||'codex',selfReview:selfReview||undefined});
     // A process can remain alive after the runner released its lock. Wait for an
     // acknowledgement or apply offline only after the writer has finished.
     for(let attempt=0;attempt<21;attempt++){
       const current=read(stateFile);
-      if(current.jobs[id].status==='verified'){console.log(`${id}: 已验收并记录证据`);return;}
+      if(current.jobs[id].status==='verified'){console.log(`${id}: 已验收并记录证据${selfReview?'（--self-review 自验登记）':''}`);return;}
       const lockFile=path.join(dir,'runner.lock');let alive=false;
       try{if(fs.existsSync(lockFile)){const owner=read(lockFile);process.kill(owner.pid,0);alive=true;}}catch{}
-      if(!alive){current.jobs[id].status='verified';current.jobs[id].evidence=file;current.jobs[id].visibility=visible;atomicJson(stateFile,current);render(current);console.log(`${id}: 已验收并记录证据`);return;}
+      if(!alive){current.jobs[id].status='verified';current.jobs[id].evidence=file;current.jobs[id].visibility=visible;current.jobs[id].reviewer=s.coordinator||'codex';if(selfReview)current.jobs[id].selfReviewed=true;atomicJson(stateFile,current);render(current);console.log(`${id}: 已验收并记录证据${selfReview?'（--self-review 自验登记）':''}`);return;}
       await sleep(100);
     }
     console.log(`${id}: 验收证据已排队，等待调度器确认；用 status 查看结果`);return;
   }
   if(cmd==='cancel'){const s=read(stateFile),j=s.jobs[args[0]];if(!j?.sessionId)throw Error('未知会话');const d=await connect(j.engine||s.engine);try{await d.cancel(root,j.sessionId);fs.mkdirSync(path.join(dir,'controls'),{recursive:true});atomicJson(path.join(dir,'controls',j.id+'.json'),{action:'cancel'});console.log('停止请求已送到原会话；请检查桌面最终状态');}finally{d.close();}return;}
-  if(cmd!=='run'){console.log('用法：workflow.mjs doctor [auto|执行器] | run <plan.json> [--resume] | open <包ID> | status | watch | verify <包ID> <验收证据文件> | cancel <包ID>');return;}
+  if(cmd==='takeover'){
+    if(!args[0])throw Error('takeover 需要目标执行器：'+EXECUTOR_ORDER.join(' / '));
+    const engine=normalizeEngine(args[0]);
+    if(!EXECUTOR_ORDER.includes(engine))throw Error('未知执行器：'+args[0]);
+    const s=read(stateFile),prev=s.coordinator||'codex';
+    if(family(engine)===family(prev))throw Error(`主持方已是 ${prev}（同族 ${family(prev)}），无需接管`);
+    const lockFile=path.join(dir,'runner.lock');let alive=null;
+    try{if(fs.existsSync(lockFile)){const owner=read(lockFile);process.kill(owner.pid,0);alive=owner.pid;}}catch{}
+    if(alive)throw Error(`调度器 ${alive} 仍在运行：先等其退出（或终止）再接管，运行中状态以 state.json 为准`);
+    s.coordinatorHistory??=[];s.coordinatorHistory.push({from:prev,to:engine,at:new Date().toISOString()});
+    s.coordinator=engine;atomicJson(stateFile,s);render(s);
+    const risky=Object.values(s.jobs).filter(j=>family(j.engine||'')===family(engine)&&j.status!=='verified').map(j=>j.id);
+    console.log(`主持方已从 ${prev} 移交给 ${engine}；现任派发将排除 ${family(engine)} 家族。`);
+    console.log(risky.length?`自验风险：${risky.join('、')} 由 ${family(engine)} 家族执行且未验收，verify 需 --self-review 显式登记或交由其他工具复核。`:'无非同族不可自验的未验收包。');
+    console.log('继续：status / watch / verify <包ID> <证据> [--self-review]；调度器恢复用 run <plan> --resume（resume 按初始主持方校验）。');
+    return;
+  }
+  if(cmd!=='run'){console.log('用法：workflow.mjs doctor [auto|执行器] | run <plan.json> [--resume] | open <包ID> | status | watch | verify <包ID> <验收证据文件> [--self-review] | cancel <包ID> | takeover <执行器>');return;}
   const planFile=path.resolve(args[0]||'plan.json'),plan=validatePlan(read(planFile),root);
   const planHash=createHash('sha256').update(JSON.stringify(plan)).digest('hex');
   fs.mkdirSync(dir,{recursive:true});fs.mkdirSync(path.join(dir,'controls'),{recursive:true});
   const lock=path.join(dir,'runner.lock');
   if(fs.existsSync(lock)){const old=read(lock);let alive=false;try{process.kill(old.pid,0);alive=true;}catch{}if(alive)throw Error(`调度器 ${old.pid} 正在运行`);if(!args.includes('--resume'))throw Error('发现旧锁，请检查原桌面会话后用 run <plan> --resume 查询恢复');fs.unlinkSync(lock);}
-  let state=fs.existsSync(stateFile)&&args.includes('--resume')?read(stateFile):{engine:plan.engine,coordinator:plan.coordinator,planFile,jobs:Object.fromEntries(plan.tasks.map(t=>[t.id,{id:t.id,status:'queued',engine:t.engine||plan.engine}]))};
-  if(state.engine!==plan.engine||state.planFile!==planFile||(state.coordinator||'codex')!==plan.coordinator)throw Error('恢复时必须使用原 plan、engine 和主持方');
+  let state=fs.existsSync(stateFile)&&args.includes('--resume')?read(stateFile):{engine:plan.engine,coordinator:plan.coordinator,planFile,jobs:Object.fromEntries(plan.tasks.map(t=>[t.id,{id:t.id,status:'queued',engine:t.engine||plan.engine,attempted:[],history:[]}]))};
+  if(state.engine!==plan.engine||state.planFile!==planFile)throw Error('恢复时必须使用原 plan 和 engine');
+  const origin=(state.coordinatorHistory?.[0]?.from)||(state.coordinator||'codex');
+  if(origin!==plan.coordinator)throw Error('恢复时必须使用原 plan、engine 和初始主持方');
+  state.coordinator=state.coordinator||plan.coordinator;
   if(state.planHash&&state.planHash!==planHash)throw Error('计划在运行后发生变化；恢复前须核对原计划，不允许静默更换文件归属或依赖');
   for(const t of plan.tasks)if(state.jobs[t.id]){const j=state.jobs[t.id];j.engine??=t.engine||plan.engine;j.attempted??=[];j.history??=[];}
   state.planHash=planHash;
@@ -74,7 +98,7 @@ async function main(){
   if(fs.existsSync(stateFile)&&!args.includes('--resume'))throw Error('此目录已有运行记录；用 --resume 恢复，或先归档整个 .work-together 后开始新任务');
   state.pid=process.pid;const lockFd=fs.openSync(lock,'wx');try{fs.writeFileSync(lockFd,JSON.stringify({pid:process.pid}));}finally{fs.closeSync(lockFd);}
   state.baseline??=fingerprint(root);
-  const hostLabel={codex:'Codex',zcode:'ZCode',workbuddy:'WorkBuddy'}[plan.coordinator]||plan.coordinator;
+  const hostLabel={codex:'Codex',zcode:'ZCode',qoder:'Qoder',workbuddy:'WorkBuddy'}[family(state.coordinator)]||state.coordinator;
   const desktops={};
   async function getDesktop(engine){engine=normalizeEngine(engine);return desktops[engine]??(desktops[engine]=await connect(engine,{model:plan.models?.[engine]||(normalizeEngine(plan.engine)===engine?plan.model:undefined),mode:plan.mode,permissionMode:plan.permissionMode}));}
   const desktopFor=j=>getDesktop(j.engine||state.engine);
@@ -84,7 +108,7 @@ async function main(){
     state.modelPolicy??={};
     save();console.log(`共 ${plan.tasks.length} 包；候选顺序 ${EXECUTOR_ORDER.join(' → ')}；详细记录在 .work-together。`);
     for(;;){
-      for(const task of plan.tasks){const j=state.jobs[task.id],ctl=path.join(dir,'controls',j.id+'.json');if(fs.existsSync(ctl)){const c=read(ctl);if(c.action==='verified'&&j.status==='exec_done'){j.status='verified';j.evidence=c.evidence;j.visibility=c.visibility;}if(c.action==='cancel'&&['running','needs_user'].includes(j.status))j.cancelRequested=true;}}
+      for(const task of plan.tasks){const j=state.jobs[task.id],ctl=path.join(dir,'controls',j.id+'.json');if(fs.existsSync(ctl)){const c=read(ctl);if(c.action==='verified'&&j.status==='exec_done'){j.status='verified';j.evidence=c.evidence;j.visibility=c.visibility;j.reviewer=c.reviewer;if(c.selfReview)j.selfReviewed=true;}if(c.action==='cancel'&&['running','needs_user'].includes(j.status))j.cancelRequested=true;}}
       for(const task of plan.tasks){const j=state.jobs[task.id];if(!['running','needs_user','unknown'].includes(j.status)||!j.sessionId)continue;
         try{const d=await desktopFor(j),previous=j.status,snap=await d.snapshot(root,j.sessionId);fs.appendFileSync(path.join(dir,j.id+'.jsonl'),JSON.stringify({at:Date.now(),engine:j.engine,sessionId:j.sessionId,snapshot:snap})+'\n');const next=summarize(snap);j.status=j.cancelRequested&&stopped(snap)?'cancelled':next;j.summary=(snap.messages?.at(-1)?.text||'').slice(-6000);j.todos=snap.todos||[];j.pending=snap.pending||[];j.error=next==='failed'?JSON.stringify(snap.error||snap.run?.error||snap.messages?.find(m=>m.error)?.error||'执行失败'):undefined;
           if(next==='needs_user'&&previous!=='needs_user')await showJob(d,j);
@@ -110,8 +134,8 @@ async function main(){
           const requested=task.engine||plan.engine;
           const probe=async engine=>{const desktop=await getDesktop(engine);desktop.modelPolicy=null;return {desktop,model:await desktop.resolveModel()};};
           let selection;
-          if(plan.fallback===false){const engine=normalizeEngine(requested==='auto'?candidates('auto',plan.coordinator)[0]:requested);selection={engine,...await probe(engine),failures:[]};}
-          else selection=await selectExecutor({engine:requested,coordinator:plan.coordinator,attempted:j.attempted,probe});
+          if(plan.fallback===false){const engine=normalizeEngine(requested==='auto'?candidates('auto',state.coordinator)[0]:requested);selection={engine,...await probe(engine),failures:[]};}
+          else selection=await selectExecutor({engine:requested,coordinator:state.coordinator,attempted:j.attempted,probe});
           for(const f of selection.failures){j.history.push(f);j.attempted.push(f.engine);}
           j.engine=selection.engine;j.modelPolicy=selection.model;state.modelPolicy[j.engine]=selection.model;d=selection.desktop;j.attempted.push(j.engine);save();
         }catch(e){for(const f of e.failures||[]){j.history.push(f);j.attempted.push(f.engine);}j.status='failed';j.error=e.message;save();continue;}

@@ -1,5 +1,9 @@
 # HANDOFF — work-together 新窗口交接
 
+## 2026-10-25 v1.5.0 更新（优先于下文历史记录）
+
+新增主持方接管与自验登记：`workflow.mjs takeover <执行器>` 在原调度器退出后移交主持权并写入 coordinatorHistory，接管后的派发排除现任主持方同族执行器；由现任主持方同族执行且未验收的包 `verify` 默认拒绝自验，加 `--self-review` 显式登记（state 记录 reviewer/selfReviewed）；`run --resume` 按初始主持方（历史链起点）校验。status/STATUS.md 展示接管来源。npm test 38/38（新增 tests/takeover.test.mjs 4 场景，其中自验登记场景补齐 visibility 夹具后通过）。未做真机 takeover 演练；五级执行器策略与 v1.4.0 相同。本次同步发布 SkillHub 1.5.0。
+
 ## 2026-10-24 v1.4.0 更新（优先于下文历史记录）
 
 用户要求五级自动选择并发布代码。当前默认 `engine=auto`：ZCode 精确 GLM-5.3-FlashX → Qoder 国际版免费 DeepSeek → Qoder 国内版免费 DeepSeek → WorkBuddy 国际版免费 DeepSeek → WorkBuddy 国内版免费工具模型。不可用按序切换，不收费回退；每候选每包最多一次。已派发结果未知不得重派，故障会话确认停止后才可交接。
