@@ -1,4 +1,4 @@
-param([string]$LifecyclePath)
+﻿param([string]$LifecyclePath)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $script:results = New-Object System.Collections.Generic.List[object]
@@ -280,6 +280,21 @@ Invoke-WtTest 'Qoder custom protocols accept only the matching regional installa
   $script:pageUrl = 'qoder-cn-app://renderer/index.html'
   Assert-WtTest (Test-WtDebugBridge -Port 19334 -ExecutablePath $cnExe) 'CN custom protocol rejected'
   Assert-WtTest (-not (Test-WtDebugBridge -Port 19334 -ExecutablePath $globalExe)) 'CN page accepted for global app'
+}
+
+Invoke-WtTest 'coordinator family is skipped from auto/all/both selections' {
+  $all=@('zcode','qoder-global','qoder-cn','workbuddy-global','workbuddy-cn')
+  Assert-WtTest (((Get-WtDesktopSelection -Engine auto -AllEngines $all -Coordinator 'zcode') -join ',') -eq 'qoder-global,qoder-cn,workbuddy-global,workbuddy-cn') 'auto did not skip coordinator family'
+  Assert-WtTest (((Get-WtDesktopSelection -Engine all -AllEngines $all -Coordinator 'workbuddy-cn') -join ',') -eq 'zcode,qoder-global,qoder-cn') 'all did not skip workbuddy family'
+  Assert-WtTest (((Get-WtDesktopSelection -Engine both -AllEngines $all -Coordinator 'zcode') -join ',') -eq 'workbuddy-global') 'both did not skip zcode'
+  Assert-WtTest (((Get-WtDesktopSelection -Engine zcode -AllEngines $all -Coordinator 'zcode') -join ',') -eq 'zcode') 'explicit single engine must not be overridden'
+  Assert-WtTest (((Get-WtDesktopSelection -Engine auto -AllEngines $all) -join ',') -eq ($all -join ',')) 'no coordinator should keep all engines'
+}
+
+Invoke-WtTest 'workbuddy alias resolves to the global family when skipping' {
+  $all=@('zcode','workbuddy-global','workbuddy-cn')
+  Assert-WtTest (((Get-WtDesktopSelection -Engine auto -AllEngines $all -Coordinator 'workbuddy') -join ',') -eq 'zcode') 'workbuddy alias family skip failed'
+  Assert-WtTest (((Get-WtDesktopSelection -Engine auto -AllEngines $all -Coordinator 'workbuddy-global') -join ',') -eq 'zcode') 'workbuddy-global family skip failed'
 }
 
 ConvertTo-Json -InputObject @($script:results.ToArray()) -Depth 4 -Compress

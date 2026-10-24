@@ -4,6 +4,25 @@
   return $Engine
 }
 
+function Get-WtFamily {
+  param([string]$Engine)
+  if (-not $Engine) { return $null }
+  return ((ConvertTo-WtEngine $Engine) -split '-')[0]
+}
+
+# Auto/all/both selections skip the coordinator's own family: that desktop is
+# hosting the coordinating chat, and restarting it would kill the session.
+# An explicit single -Engine is a user override and is returned unchanged.
+function Get-WtDesktopSelection {
+  param([string]$Engine, [string[]]$AllEngines, [string]$Coordinator)
+  $requested = if ($Engine -in @('auto','all')) { @($AllEngines) }
+    elseif ($Engine -eq 'both') { @('zcode','workbuddy-global') }
+    else { @(ConvertTo-WtEngine $Engine) }
+  $family = Get-WtFamily $Coordinator
+  if (-not $family -or $requested.Count -eq 1) { return $requested }
+  return @($requested | Where-Object { (Get-WtFamily $_) -ne $family })
+}
+
 function Get-WtAppProcesses {
   param([string]$ExecutablePath)
   $processName = [IO.Path]::GetFileNameWithoutExtension($ExecutablePath)

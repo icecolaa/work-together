@@ -1,5 +1,9 @@
 # HANDOFF — work-together 新窗口交接
 
+## 2026-10-25 v1.6.0 更新（优先于下文历史记录）
+
+六款客户端皆可主持：Codex 与五款桌面客户端（ZCode、Qoder 双区、WorkBuddy 双区）的聊天都可作为新 run 的发起主持方（plan.json `coordinator`），派发按家族排除现任主持方，主持桌面无需调试端口。启动脚本新增主持方感知：`start-desktops.ps1` 自动读取当前目录 plan.json 的 coordinator（或 `-Coordinator` 指定），`auto`/`all`/`both` 跳过主持方同族桌面并打印说明，显式 `-Engine <单项>` 视为覆盖——防止重启主持会话。实现为 desktop-lifecycle.ps1 纯函数 `Get-WtFamily`/`Get-WtDesktopSelection`，PS 场景 25→27（生命周期内 27 场景），npm test 38/38 双通道（pwsh+PS5.1）。根 README.md 全文重写（主持方×执行器矩阵、候选与接管语义、验收纪律、平台边界、文档地图）。SKILL.md 主持方段落与开始示例改为全客户端适用。未做真实"执行器聊天发起主持"的全现场演练（机制与接管同构：同家族排除、同 hostLabel、同保护路径；接管已实现并发布），macOS 仍实验性。
+
 ## 2026-10-25 v1.5.0 更新（优先于下文历史记录）
 
 新增主持方接管与自验登记：`workflow.mjs takeover <执行器>` 在原调度器退出后移交主持权并写入 coordinatorHistory，接管后的派发排除现任主持方同族执行器；由现任主持方同族执行且未验收的包 `verify` 默认拒绝自验，加 `--self-review` 显式登记（state 记录 reviewer/selfReviewed）；`run --resume` 按初始主持方（历史链起点）校验。status/STATUS.md 展示接管来源。npm test 38/38（新增 tests/takeover.test.mjs 4 场景，其中自验登记场景补齐 visibility 夹具后通过）。未做真机 takeover 演练；五级执行器策略与 v1.4.0 相同。本次同步发布 SkillHub 1.5.0。

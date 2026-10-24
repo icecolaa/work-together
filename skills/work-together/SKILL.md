@@ -2,9 +2,9 @@
 name: work-together
 description: 当用户要求 Codex、ZCode、Qoder 或 WorkBuddy 跨工具协作、在真实桌面中并行处理同一项目时使用。当前聊天负责规划与独立验收，ZCode / Qoder / WorkBuddy 桌面负责执行，提供文件归属调度、进度跟踪和原会话恢复。仅在当前聊天内部拆分任务或调用子代理时不使用。
 slug: work-together
-version: 1.5.0
+version: 1.6.0
 displayName: Work Together · 跨工具桌面协作
-summary: 在真实 ZCode / Qoder / WorkBuddy 桌面中并行完成同一项目：当前聊天拆包规划，按文件归属调度、跟踪待办与人工介入，并逐包独立验收；异常复用原会话恢复。Windows 五级候选按本机预检判定，macOS 实验性。
+summary: Codex、ZCode、Qoder、WorkBuddy 六款客户端任一聊天皆可主持：拆包规划、按文件归属调度到其他工具的真实桌面、跟踪待办并逐包独立验收；异常复用原会话恢复，主持方失效可接管。Windows 五级候选按本机预检判定，macOS 实验性。
 tags: [collaboration, multi-agent, desktop-automation, codex, zcode, qoder, workbuddy]
 homepage: https://github.com/icecolaa/work-together
 ---
@@ -15,9 +15,9 @@ homepage: https://github.com/icecolaa/work-together
 
 适合跨模块改动、独立文稿或其他能按文件拆分的项目任务：执行过程在真实桌面可见，前置包验收后才放行依赖，审批或提问集中给出介入卡。单文件小改动、必须同时写同一文件的工作不必强行并行。
 
-在 Codex 聊天中可这样开始（项目目录使用当前工作目录）：
+在任何一款客户端（Codex / ZCode / Qoder / WorkBuddy）的聊天中都可这样开始（项目目录使用当前工作目录，主持方=当前聊天）：
 
-> 使用 work-together，executor=auto。先检查项目现状，把目标拆成互不重叠的任务包，写清文件归属和验收条件。按指定优先级选择可用的桌面执行器；缺额度或不可用时自动切换，你持续跟进并独立验收，最后交付产物和证据。
+> 使用 work-together，coordinator=当前聊天（如 zcode），executor=auto。先检查项目现状，把目标拆成互不重叠的任务包，写清文件归属和验收条件。按指定优先级选择可用的桌面执行器（自动排除主持方同族）；缺额度或不可用时自动切换，你持续跟进并独立验收，最后交付产物和证据。
 
 该示例只授权项目任务协作，发布、推送等外部操作仍取决于用户的具体任务要求。
 
@@ -37,13 +37,13 @@ homepage: https://github.com/icecolaa/work-together
 
 执行中的任务只有确认原会话已停止，才可带已有产物、原会话 ID 和失败原因转交下一项。创建、派发或连接结果不明确时记 `unknown`，查询原会话，禁止自动重派。模型错误、超时和没回应本身不是停止证明。
 
-计划顶层 `engine` 为默认值，任务可覆写 `engine`。主持方写入 `coordinator`（缺省 `codex`），不能把 Exec 指派给同一主持工具；当前没有 Codex 执行适配器。简单任务用单包；只有文件归属和依赖允许时才并行。旧 `executor=both` 表示 ZCode 与 WorkBuddy 国际版组合，不能写为 `plan.engine=both`。
+计划顶层 `engine` 为默认值，任务可覆写 `engine`。主持方写入 `coordinator`（缺省 `codex`）：Codex 与五款桌面客户端（ZCode、Qoder 双区、WorkBuddy 双区）的聊天**都可以担任主持方**，在哪个聊天里运行本 skill，谁就是主持方；主持方不能把 Exec 指派给同族执行器（如 ZCode 主持时任务自动落到 Qoder/WorkBuddy）。主持方自己的桌面无需调试端口；启动脚本会自动跳过主持方同族桌面，防止重启杀掉协调会话。简单任务用单包；只有文件归属和依赖允许时才并行。旧 `executor=both` 表示 ZCode 与 WorkBuddy 国际版组合，不能写为 `plan.engine=both`。
 
 ## 环境与启动
 
 需要 Node.js >=22，以及已安装并登录的候选桌面。桥使用版本相关的本机私有接口，不改桌面数据库或 app.asar，不复制模型密钥。应用可启动、模型可选、任务可执行是不同检查；不能把预检成功写成整套工作流通过。既往验证涵盖 ZCode 3.15.3 / WorkBuddy AI 5.7.6；新版本及 Qoder、WorkBuddy 国内版需按实际 `doctor` 与 smoke 结果报告。
 
-- Windows：`scripts/start-desktops.ps1 -Engine auto` 按五级列表启动/复用；也可只选任一 engine。`both` 兼容旧双客户端，`all` 等同启动列表 `auto`。多候选启动会继续检查其余项，最后汇总失败；它只准备桌面，不派发模型请求。路径参数见 [运行说明](references/operations.md)。
+- Windows：`scripts/start-desktops.ps1 -Engine auto` 按五级列表启动/复用；也可只选任一 engine。脚本自动读取当前目录 plan.json 的 `coordinator`（或用 `-Coordinator` 指定），**跳过主持方同族桌面**（主持聊天就运行在其中，重启会杀掉会话）；显式 `-Engine <单项>` 视为覆盖。`both` 兼容旧双客户端，`all` 等同启动列表 `auto`。多候选启动会继续检查其余项，最后汇总失败；它只准备桌面，不派发模型请求。路径参数见 [运行说明](references/operations.md)。
 - 健康实例直接复用；缺调试端口的所选应用可能退出后重启。当前项目活跃任务及持锁主持方受保护；其他项目或人工会话需先检查，不能为预检中断活跃任务。仅用户明确允许中断后用 `-ForceRestart`，随后查询原会话恢复。
 - macOS：实验性、未真机验证。先读 [macOS 清单](references/macos.md)，Bash 启动器目前仅支持旧 ZCode / WorkBuddy 国际版入口；五级 Windows 启动参数不适用于该脚本。
 

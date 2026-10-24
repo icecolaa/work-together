@@ -28,6 +28,8 @@ powershell -NoProfile -File <skill绝对路径>/scripts/start-desktops.ps1 -Engi
 node <skill绝对路径>/scripts/workflow.mjs doctor
 ```
 
+**主持方同族桌面自动跳过**：任何一款客户端的聊天都可以担任主持方（plan.json 的 `coordinator`，或 `-Coordinator` 显式指定）。启动脚本检测到主持方后，`auto`/`all`/`both` 会跳过其同族桌面（主持聊天就运行在其中，重启会杀掉会话）并打印跳过说明；显式 `-Engine <单项>` 视为用户覆盖，照常执行。主持方自己的桌面无需调试端口。
+
 端口仅本机，安装路径可以逐项覆盖：
 
 | 执行器 | 端口 | 路径参数 | 默认路径 |
