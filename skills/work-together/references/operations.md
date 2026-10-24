@@ -13,8 +13,9 @@
 | `workflow.mjs status` | 当前各包状态与可见性（JSON） | 随时轮询 |
 | `workflow.mjs watch` | 实时输出状态变化 | 主持会话保持跟进时 |
 | `workflow.mjs open <包ID>` | 重新定位桌面会话，修复显示 | 派发了但桌面没显示/选中错误 |
-| `workflow.mjs verify <包ID> <证据文件>` | 登记独立验收证据，状态转 verified | 主持方核对完产物后 |
+| `workflow.mjs verify <包ID> <证据文件> [--self-review]` | 登记独立验收证据，状态转 verified；接管后同族未验收包须 `--self-review` 显式登记自验 | 主持方核对完产物后 |
 | `workflow.mjs cancel <包ID>` | 向原会话送停止请求 | 需要中断某包时 |
+| `workflow.mjs takeover <执行器>` | 主持方失效（缺额度/失联）时移交主持权：写 coordinatorHistory，此后派发排除现任同族；调度器运行中禁止接管 | 原主持方无法继续，由其他工具会话接管时 |
 
 状态机：`queued → running → needs_user → exec_done → verified`；异常分支 `failed / unknown / blocked / cancelled`。unknown 不重派，先查原会话。遇到问题按症状查 [faq.md](faq.md)。
 
