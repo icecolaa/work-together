@@ -2,7 +2,7 @@
 name: work-together
 description: 当用户要求 Codex、ZCode、Qoder 或 WorkBuddy 跨工具协作、在真实桌面中并行处理同一项目时使用。当前聊天负责规划与独立验收，ZCode / Qoder / WorkBuddy 桌面负责执行，提供文件归属调度、进度跟踪和原会话恢复。仅在当前聊天内部拆分任务或调用子代理时不使用。
 slug: work-together
-version: 1.6.0
+version: 1.6.1
 displayName: Work Together · 跨工具桌面协作
 summary: Codex、ZCode、Qoder、WorkBuddy 六款客户端任一聊天皆可主持：拆包规划、按文件归属调度到其他工具的真实桌面、跟踪待办并逐包独立验收；异常复用原会话恢复，主持方失效可接管。Windows 五级候选按本机预检判定，macOS 实验性。
 tags: [collaboration, multi-agent, desktop-automation, codex, zcode, qoder, workbuddy]
@@ -14,6 +14,8 @@ homepage: https://github.com/icecolaa/work-together
 让当前聊天担任主持方，把独立任务包交给其他工具的真实桌面会话执行。你负责 Spec（目标与边界）、Plan（任务与依赖）和 Verify（独立验收）；执行器负责 Exec。交付应包含实际产物、逐条验收证据和未解决事项。
 
 适合跨模块改动、独立文稿或其他能按文件拆分的项目任务：执行过程在真实桌面可见，前置包验收后才放行依赖，审批或提问集中给出介入卡。单文件小改动、必须同时写同一文件的工作不必强行并行。
+
+第一次使用不需要先读完全部文档：拷贝 `examples/` 里的 plan 与 SPEC 模板，照 `references/walkthrough.md` 的端到端样例执行即可。额度不足、模型不可选或桌面不可用时按五级候选自动切换；任务卡住时按症状查 `references/faq.md`（桌面不可见、验收退出码 2、连接断开、接管与自验等），恢复命令集中在 operations.md 的速查表，不用通读全部文档。Windows 五款客户端已按真实任务现场验证并逐包独立验收；macOS 适配已提供，首次使用前按 `references/macos.md` 清单验证即可。
 
 在任何一款客户端（Codex / ZCode / Qoder / WorkBuddy）的聊天中都可这样开始（项目目录使用当前工作目录，主持方=当前聊天）：
 
