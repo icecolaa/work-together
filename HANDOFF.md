@@ -1,303 +1,178 @@
 # HANDOFF — work-together 新窗口交接
 
-## 2026-10-25 v1.6.0 更新（优先于下文历史记录）
+核对日期：2026-10-25（Asia/Shanghai）。本文依据现有源码、测试、Git 和本机安装重整，替代此前叠加的旧快照。历史过程见 Git 历史及验收文档，历史验证不代表当前桌面在线。
 
-六款客户端皆可主持：Codex 与五款桌面客户端（ZCode、Qoder 双区、WorkBuddy 双区）的聊天都可作为新 run 的发起主持方（plan.json `coordinator`），派发按家族排除现任主持方，主持桌面无需调试端口。启动脚本新增主持方感知：`start-desktops.ps1` 自动读取当前目录 plan.json 的 coordinator（或 `-Coordinator` 指定），`auto`/`all`/`both` 跳过主持方同族桌面并打印说明，显式 `-Engine <单项>` 视为覆盖——防止重启主持会话。实现为 desktop-lifecycle.ps1 纯函数 `Get-WtFamily`/`Get-WtDesktopSelection`，PS 场景 25→27（生命周期内 27 场景），npm test 38/38 双通道（pwsh+PS5.1）。根 README.md 全文重写（主持方×执行器矩阵、候选与接管语义、验收纪律、平台边界、文档地图）。SKILL.md 主持方段落与开始示例改为全客户端适用。未做真实"执行器聊天发起主持"的全现场演练（机制与接管同构：同家族排除、同 hostLabel、同保护路径；接管已实现并发布），macOS 仍实验性。
+## 1. 当前状态与本轮验证
 
-## 2026-10-25 v1.5.0 更新（优先于下文历史记录）
+项目当前 **v1.6.2**。六款客户端聊天可主持，五款桌面执行器按候选策略执行；已实现任务归属调度、独立验收、失败切换、主持接管及自验登记，没有 Codex 桌面 Exec 适配器。
 
-新增主持方接管与自验登记：`workflow.mjs takeover <执行器>` 在原调度器退出后移交主持权并写入 coordinatorHistory，接管后的派发排除现任主持方同族执行器；由现任主持方同族执行且未验收的包 `verify` 默认拒绝自验，加 `--self-review` 显式登记（state 记录 reviewer/selfReviewed）；`run --resume` 按初始主持方（历史链起点）校验。status/STATUS.md 展示接管来源。npm test 38/38（新增 tests/takeover.test.mjs 4 场景，其中自验登记场景补齐 visibility 夹具后通过）。未做真机 takeover 演练；五级执行器策略与 v1.4.0 相同。本次同步发布 SkillHub 1.5.0。
-
-## 2026-10-24 v1.4.0 更新（优先于下文历史记录）
-
-用户要求五级自动选择并发布代码。当前默认 `engine=auto`：ZCode 精确 GLM-5.3-FlashX → Qoder 国际版免费 DeepSeek → Qoder 国内版免费 DeepSeek → WorkBuddy 国际版免费 DeepSeek → WorkBuddy 国内版免费工具模型。不可用按序切换，不收费回退；每候选每包最多一次。已派发结果未知不得重派，故障会话确认停止后才可交接。
-
-五款 Windows 客户端均完成真实文件任务、实际模型核对、原会话显示校验和主持方独立 verify；ZCode 不可用模型 → Qoder 国际版自动回退实测通过。npm test 34/34，生命周期内部25场景。版本及边界见 docs/verification-1.4.0.md。未人为耗尽真实额度，macOS 未真机验证。
-
-根 package.json、源 Skill 和本机安装副本统一1.4.0。五级策略与本节优先于下文1.3.1的Flash/最低付费回退旧记录。代码推送状态以 Git HEAD 和双远程 main 为准。本次代码发布不代表 SkillHub 1.4.0 已提交或审核通过。
-
-更新时间：2026-10-20（Asia/Shanghai）。根据当前聊天、Git、现有验收文档及本次核查整理；只读本文即可判断现状并继续。历史验收与当前运行状态分开记录。
-
-## 1. 从这里继续
-
-**原始交付已完成，本地项目/已安装 Skill 当前 v1.3.1，已提交 SkillHub 审核。** 最新状态见下方发布记录；后文 v1.3.0 为历史快照。不自动重跑全部冒烟、重启应用或重复派发。Windows 已现场验证；macOS 实验性，未真机验证。
-
-用户随后明确要求 Git 自动提交推送；本次将交接、测试修复与 v1.3.1 优化一并提交到 main，并按 Gitee→GitHub 同步。下方“未提交/未推送”为发布阶段快照，当前同步结果以 Git HEAD 和两端 main 为准。
-
-### 2026-10-20 SkillHub 优化与发布（最新）
-
-用户明确要求依据 `https://skillhub.cn/ai/release.md` 优化 Skill 及概述并发布，随后要求继续，已完成：
-
-- 发布前实时确认账号 `user_5dea5c46` 及线上最新版本 **1.3.0**，未依据旧 pending 记录重复提交旧版本。
-- 根 package.json / 源 SKILL.md / 本机安装副本统一 **1.3.1**。优化 displayName、summary、description、概述开场与使用示例；补充主持方/执行器矩阵、无 Codex Exec、both 配置、平台启动分流，统一主持方术语，修正包内单执行器快速开始。
-- SkillHub 网页概述从根 SKILL.md 读取并剥离 frontmatter（优先于 README）；本次直接优化该正文，不另造无效 overview 元数据。现有头像未替换。
-- 验证：`npm test` **24/24**；SkillHub 官方 CLI dry-run 通过；Codex 核心 frontmatter/正文校验通过（临时投影去掉 SkillHub 扩展字段，未改发布源文件），另校验扩展字段和本地 Markdown 引用。内置 quick_validate.py 仅接受 Codex 字段，不能直接用它拒绝 SkillHub 必填的 slug/version/displayName。
-- 官方 CLI 位于 `C:/Users/lenovo/.skillhub/skills_store_cli.py`，版本 2026.8.5；包装入口不在当前 PATH，直接 `python <CLI> --skip-self-upgrade ...`，设置 `PYTHONUTF8=1`、`PYTHONIOENCODING=utf-8`。已存登录凭据经 `auth whoami` 实时确认，不输出 token，不需要重新索取密钥。
-- 官方 CLI publish 返回 `ok=true`、skillId **284961**、versionId **447671**、version **1.3.1**、fileCount **15**，reviewStatus/contentAuditStatus/securityScanStatus 均为 pending。随后认证后台版本列表确认该版本 **reviewStatus=pending、isLatest=false**，安全扫描进行中；公开详情 latestVersion 仍为 **1.3.0**。提交成功不等于审核通过。
-- 详情链接：`https://skillhub.cn/skills/user_5dea5c46/work-together`。复核原始响应仅本地保存于 `.local/skillhub-before.json`、`.local/skillhub-after.json`、`.local/skillhub-versions.json`；不推送这些文件。
-- 本机安装版 15 个源文件已同步并逐字节一致。未启动桌面，未做 macOS 真机验证，未提交 Git 或推送双远程。
-- 当前未提交范围：此前 HANDOFF.md、README.md、tests/cross-platform.test.mjs，加本次 package.json、skills/work-together/{SKILL.md,README.md,references/operations.md}。后续查审核结果时先读后台/详情，不重复发布同版本。
-
-### 2026-10-20 新窗口续接记录（优先于下文旧快照）
-
-用户要求读取交接、核对后继续，已按候选第 2 项完成测试可移植性修复：
-
-- `tests/cross-platform.test.mjs` 支持 `WT_TEST_BASH`；Windows 默认从 Git 安装位置及 PATH 寻找 Bash，排除 System32/WindowsApps 的 WSL 入口，无需临时修改 PATH。
-- Bash 语法检查与非 darwin 拒绝检查拆开；darwin 跳过拒绝检查，避免测试启动真实应用。拒绝检查同时要求退出码 2。
-- README 补充 Bash 依赖、配置和 macOS 测试边界。未修改 skill 包文件，根/skill 版本仍为 1.3.0。
-- 默认环境 `npm test` **24/24 通过**；显式 `WT_TEST_BASH=C:/Program Files/Git/bin/bash.exe` 的跨平台用例 **4/4 通过**；PS5.1 生命周期用例通过（内部 20 场景）。未做 Mac 真机验证。
-- 重新核对：本地 HEAD 与 GitHub/Gitee main 均为 `25e09c1bc3506d0f150a3d40a3a9d2785e64783d`；本机安装 skill 的 15 个源文件逐字节一致；根目录无 state.json、runner.lock。没有启动桌面或派发任务。
-- 当前未提交文件：原有 HANDOFF.md 加本次 README.md、tests/cross-platform.test.mjs。尚未提交/推送。下面“23 项”“Bash 待修”等为续接前快照；该测试问题已解决。
-- 后续候选：第 3 项术语统一；Mac 真机、SkillHub 发布与故障演练仍按各自触发条件执行。
-
-2026-10-20 本次核查：
-
-| 项目 | 结果 |
+| 项目 | 本轮核对结果 |
 |---|---|
-| 工作目录 | E:\code\work-together |
-| 分支 / 修改前基线 | main / 25e09c1bc3506d0f150a3d40a3a9d2785e64783d |
-| 版本 | 根 package.json、skill frontmatter 均为 1.3.0 |
-| 双远程 | GitHub/Gitee main 均为上述 SHA，本次 ls-remote 确认 |
-| 本机 skill | C:\Users\lenovo\.codex\skills\work-together，15 个源文件逐字节一致；未检查安装目录额外文件 |
-| Node | v26.5.1，要求 >=22，无 npm 依赖 |
-| 全测 | 临时优先 Git Bash 后 **23/23 通过**；默认系统 Bash 下 22 通过、1 超时，详见第 7 节 |
-| PS5.1 | tests/startup.test.mjs 通过，内部含 20 个生命周期场景；默认全测使用缓存 PS7 |
-| 根目录运行状态 | 无 .work-together/state.json，无 runner.lock；不代表其他项目没有任务 |
-| 桌面端口 | 127.0.0.1:19331、19332 此刻均不监听；本次未启动应用、未重做 doctor |
-| 工作树 | 本轮开始干净；完成后仅 HANDOFF.md 为本轮修改，尚未提交/推送 |
+| 工作目录 / 分支 | E:\code\work-together / main |
+| 修改前 HEAD | 5485fc4a322a6d5035ade8e5496f89703200d0f0 |
+| 双远程 | 分别 git ls-remote，GitHub、Gitee main 均与上述 HEAD 一致 |
+| 工作树 | 开始时干净；本轮仅更新 HANDOFF.md，未提交、推送或发布 |
+| 版本 | package.json、源 SKILL.md 均为 1.6.2 |
+| 本机安装 | C:\Users\lenovo\.codex\skills\work-together，17 个源文件均存在且 SHA256 一致；未核对安装目录额外文件 |
+| Node | v26.5.1，要求 >=22，无 npm 运行依赖 |
+| 全测 | npm test **38/38 通过**，0 fail、0 skip；生命周期内部 27 场景 |
+| PowerShell 5.1 | 显式指定系统 Windows PowerShell，startup.test.mjs **1/1 通过**，内部 27 场景 |
+| 根目录任务记录 | 无 .work-together/state.json、runner.lock，不代表其他项目无任务 |
+| 桌面状态 | 本轮未启动/重启桌面，未运行 doctor，未派发或重做现场验收 |
+| SkillHub | 本轮未查线上审核/latest，未发布；本地版本与 Git 同步不证明线上已上架 |
 
-新窗口先看 git status --short、git log -3 --oneline。本文是快照，现场新变化优先。候选下一步不代表用户要求全部立即执行。
+最近提交：5485fc4（v1.6.2 老板/员工概述）、39136e8（v1.6.1 新手路径和排障）、8edcbb4（v1.6.0 六客户端主持、启动跳过同族）、84e41b6（v1.5.0 接管、自验）。
 
-## 2. 用户目标与固定偏好
+## 2. 源码行为与不能破坏的约束
 
-原始要求：中文提示词和 skill，由 Codex 同目录规划/验收，开始时指定 ZCode 或 WorkBuddy 的真实桌面会话执行。后台并发、主聊天清爽、自动紧凑汇总、会话状态/人工介入可见、原生待办、回应前回顾卡，责任分为 Spec / Plan / Exec / Verify。需启动已登录应用现场验证，并推公开 GitHub/Gitee 便于迭代。后续扩展为三种工具任一主持、其余可用执行器执行。
+### 2.1 主持方、候选与模型
 
-- 仓库 work-together，**公开**；origin fetch=GitHub，push 顺序 **Gitee→GitHub**。
-- ZCode 默认 **yolo 完全访问 + 精确 GLM-5.3-Flash**，创建即绑定，reasoningLevel=max，不静默替换普通版。
-- WorkBuddy 默认 **bypassPermissions 允许完全访问，优先当前模型列表明确零费率模型**。历史现场是 Step-5-Preview；Auto/空费率不是免费，无零费率时选最低已知费率并说明。历史报价不保证永久。
-- 不让用户每次退出托盘，脚本复用健康实例，自动退出/重启未开调试端口的所选应用。
-- 必须在真实 ZCode/WorkBuddy 桌面看到过程，后台 sessionId/CLI 输出不足以验收。
-- 小包独立验收、文件归属明确；执行者在边界内可判断差异，自测完成只算交回，主持方独立验收。
-- 文件归属是协作约定，不是 OS 沙箱。构建、依赖、Git index、端口、DB 等共享状态另行协调。
+core.mjs 缺省 coordinator=codex、engine=auto。**concurrency 必须显式指定为 1..4 的整数**，示例使用 2，validatePlan 不补默认值。workflow 按主持方生成会话标题和派发提示词。
 
-提示词在 prompts/ai-collaboration.md，格式为“## N. 标题 / **适用场景** / **提示词：** / 可复制正文”。SPEC.md 是初始合同，PLAN.md 原交付均勾选；保留早期 Codex 主持用词，不代表现功能退回 v0.1。
+| 顺序 | engine | 端口 | 默认模型策略 |
+|---|---|---|---|
+| 1 | zcode | 19331 | 精确 GLM-5.3-FlashX，yolo；优先 reasoningLevel=max，实际取模型支持项 |
+| 2 | qoder-global | 19333 | 已启用且 priceFactor=0 的 DeepSeek |
+| 3 | qoder-cn | 19334 | 已启用且 priceFactor=0 的 DeepSeek |
+| 4 | workbuddy-global | 19332 | 明确零费率、支持工具调用的 DeepSeek |
+| 5 | workbuddy-cn | 19335 | 明确零费率、支持工具调用的模型 |
 
-微信参考 https://mp.weixin.qq.com/s/KeQmHzdWDY53cfDBZj81lA 被验证页挡住，未取得正文，不能声称已从文章补齐功能。官方参考链接见 README/验收文档。
+Qoder / WorkBuddy 默认权限为 bypassPermissions。Auto、空费率、未标价和付费模型不能充当免费候选；耗尽后报告，不回退收费模型。报价以当前目录查询为准。旧记录中的 GLM-5.3-Flash 和“最低付费回退”已失效。
 
-## 3. 完整过程与关键提交
+workbuddy / qoder 分别为对应 global 别名。显式 engine 从该项向后尝试；fallback=false 锁定单项，auto 时取首个非主持方同族候选。每任务每候选最多一次。executor=both 是提示词/启动器兼容入口，不能写 plan.engine=both。auto 不接受通用顶层 model，可用 models 按执行器指定。
 
-日期按 Git 的 Asia/Shanghai 提交日期；现场与提交可能跨日。
+**整族排除以代码为准**：executors.mjs 的 family() 按品牌前缀分类。Codex 主持可用全部五款；ZCode 主持可用 Qoder/WorkBuddy 双区；Qoder 任一区主持只能用 ZCode、WorkBuddy 双区；WorkBuddy 任一区主持只能用 ZCode、Qoder 双区。根 README 矩阵仍允许同品牌另一地区执行，与源码不符，待修。
 
-| 日期 / 提交 | 工作、原因、结论 |
+### 2.2 调度与验收
+
+- 每包有合法唯一 id、prompt、files、acceptance，可有 dependsOn、独立 engine；拒绝循环/未知依赖、归属越界和穿过工作区外的链接。
+- 相交文件/父子目录归属串行，依赖必须等前置包 verified。文件归属是约定和事后检测，不是 OS 隔离；Git index、构建输出、依赖安装、端口、数据库等共享状态单独协调。
+- 状态含 queued、creating、dispatching、running、needs_user、exec_done、verified、failed、unknown、blocked、cancelled。执行者完成仅算 exec_done。
+- 创建/派发结果未知、断连时保留 unknown，不重派，先查原会话。失败切换前须确认原会话停止，保留原会话及摘要，继续已有产物。
+- 可见性必须同时满足正确项目、目标会话选中、正文任务包标记，写 .work-together/<id>.visibility.json；失败用 open 修复原会话，禁止重派。
+- verify 要求 exec_done、匹配当前项目/会话的可见性证据、无归属外变更、非空独立验收证据文件。它不判断证据文字真伪，主持方须亲自核对产物、原生待办和必要测试。
+- 指纹排除根目录 .git、.work-together，检测其他路径的增/改/删。归属外变更阻断验收，runner 收尾可返回退出码 2；主持辅助材料应在基线前就位或放 .work-together。
+- 同项目一个 runner.lock。run --resume 校验原计划路径、engine、初始主持方和计划哈希；creating/dispatching 恢复时转 unknown。
+- 全部交回时 runner 可能先退出，仍需独立登记 verified；锁释放而旧 PID 尚存时的离线验收已有回归。
+- watch 只读 state，不轮询桌面；全部交回或进入失败/未知等终态会返回，runner/主持方仍负责跟进。
+
+### 2.3 接管与启动
+
+takeover <执行器> 要求旧调度器退出、目标为不同家族的有效桌面执行器；写 coordinatorHistory，status/STATUS.md 显示来源。当前 takeover 不接受 codex 作为目标，尽管 codex 可作为新计划主持方。
+
+接管后正常候选选择按现任主持方过滤；恢复仍用原 plan，按历史链起点校验初始主持方。同族执行且未验收的包默认拒绝自验，--self-review 显式登记 reviewer/selfReviewed，或交其他工具复核。该标记不等于独立复核。相关 4 个 Node 测试通过，真实桌面接管全链路演练尚无现有验收记录。
+
+Windows start-desktops.ps1 的 auto/all/both 根据当前目录 plan.json 的 coordinator 或 -Coordinator 参数跳过同族，显式单项 -Engine 覆盖启动选择过滤。**接管后原 plan 仍为初始主持方，启动时显式传现任 -Coordinator**；启动器不会自动读取 coordinatorHistory。
+
+健康实例复用，缺调试端口的所选应用可自动退出/重启。当前项目活跃任务、持锁主持方受保护，状态不可读保守拒绝；不是所有项目的全局保护。仅用户明确允许中断后用 -ForceRestart，随后查原会话。按可执行文件完整路径定位，避免按名字误杀其他安装。
+
+macOS 仍实验性、未真机验证；已有 .app 页面/路径推导、Bash 启动器及清单，但启动器只保留旧 ZCode / WorkBuddy 国际版入口，不支持五级 Windows 参数。首次须按 references/macos.md 真机验证。
+
+桥依赖版本相关的本机私有接口，不改 app.asar/数据库，不复制密钥；升级后 doctor 和小任务验证。skill 不会在主持回合结束后自行唤醒，跨回合通知需要宿主机制。
+
+## 3. 验证证据与边界
+
+**旧测试问题已解决**：cross-platform.test.mjs 支持 WT_TEST_BASH，Windows 自动找 Git Bash、排除 System32/WindowsApps 的 WSL 入口。Bash 语法与非 darwin 拒绝检查已拆分，darwin 跳过拒绝用例，拒绝要求退出码 2。本轮不修改 PATH 即全测通过，勿再将两项列为待修。
+
+当前 38 个测试覆盖归属/链接、依赖、候选顺序及有界失败、免费策略、停止确认、未知保护、Qoder 区域协议/回合状态、可见性、接管/自验/恢复、验收竞态、启动生命周期和 macOS 纯逻辑/语法。
+
+docs/verification-1.4.0.md 记录 2026-10-24 五执行器真实 marker.txt 任务、实际模型、会话可见性及主持方独立 verify：
+
+| 历史客户端版本 | 现场实际模型 |
 |---|---|
-| 10-15 bd2340b | 初始化 Spec/Plan、提示词、skill、CDP 桥、调度、测试。Codex 主持，外部桌面执行。 |
-| 10-15 c6bbd65 | 首轮真实并发/待办/审批/产物独立验收收口，双远程公开发布。 |
-| 10-15 f89b294 | v0.2：用户“派给 ZCode 却看不到过程”。后台已建会话，桌面停旧 smoke；补真实项目导航、选中 session、正文任务标记、visibility.json。显示失败阻断验收，open 修复而非重派。固化默认模型/权限。 |
-| 10-15 a884a53 | runner 已释放锁但 PID 尚存时，验收只排队不落盘的竞态修复。 |
-| 10-17 c82e829 | v0.2.1：自动退出/重启未开调试端口应用，健康复用、当前项目任务保护、ForceRestart 显式中断。真实启动发现 PS5.1 JSON 包装及 .NET file URL 查询串差异，修复并补 11 场景。 |
-| 10-17 8040b00 | 首次 HANDOFF.md。 |
-| 10-17 0caedee | review 后修 WorkBuddy 路径回退、状态不可读时保守保护、缺 URL 页面跳过，补生命周期场景。 |
-| 10-18 89447e6 | v0.3：executor=zcode/workbuddy/both；顶层 engine 默认、逐包 engine 混排；open/cancel/验收/重启保护逐包路由。 |
-| 10-18 9de514e | v0.4：Codex/ZCode/WorkBuddy 任一主持，coordinator 缺省 codex；禁止 engine=coordinator；本项目持锁期间保护主持方。 |
-| 10-18 8021f01 | ZCode 主持、Codex CLI 主持混排闭环，status 加 coordinator；记录 headless 分离进程回收等坑。 |
-| 10-18 ee82af4 | WorkBuddy 主持→ZCode 执行闭环，两轮新独立验收，三种主持均有现场证据。 |
-| 10-18 19f4ddb | SkillHub 元数据补齐，根/skill 统一 1.1.0。 |
-| 10-18 b5e0393 | v1.2.0：按评测补 FAQ、含失败恢复实战、计划/Spec 模板、包内 README、速查、headless 分工，纯文档迭代。 |
-| 10-19 25e09c1 | v1.3.0：macOS 实验性页面/路径推导、darwin 启动器、纯逻辑测试、真机清单，没有 Mac 现场验证。 |
-| 10-20 本轮 | 纠正旧交接顶部 v0.2.1/20 项/18 项矛盾；核对当前远程/安装/state；发现系统 Bash 超时，临时 Git Bash 后 23 全过。仅更新此文件。 |
+| ZCode 3.16.3.8992 | GLM-5.3-FlashX，yolo |
+| Qoder 国际版 0.4.9.0 | dfmodel / DeepSeek-Flash，零费率 |
+| Qoder 国内版 0.4.8.0 | dfmodel / DeepSeek-Flash，零费率 |
+| WorkBuddy 国际版 5.8.4.0 | deepseek-v4.1-flash，零费率 |
+| WorkBuddy 国内版 5.8.3.0 | step-5-preview，零费率 |
 
-SkillHub 信息来自旧交接与提交描述，本次未查线上：v1.1.0 曾以 skillId=284961、versionId=444546 提交，v1.2.0 也记录为提交，当时 pending。历史评测 4.6/5，FAQ/反模式 3.8、文档 4.0，促成补文档。**当前审核、latest、v1.3.0 是否上线未实时确认。** 本地版本不证明线上已发布。
+产物为 WORK_TOGETHER_SMOKE_OK 加 LF（23 字节、无 BOM）。不可用 ZCode 模型在预检阶段回退 Qoder 国际版已现场通过；未人为耗尽真实额度，运行中故障交接主要靠模拟回归。上述版本/模型来自历史文档，本轮未重查桌面。
 
-## 4. 架构与不能破坏的约束
+docs/verification.md 保留早期 Codex、ZCode、WorkBuddy 三种主持闭环。Qoder 双区、WorkBuddy 国内版聊天主持及真实 takeover 的完整现场覆盖尚未补齐，不能从五执行器通过推断已经通过。
 
-### 4.1 计划与职责
+本轮读取 .local 下历史 state，仅核对登记，未重验产物/桌面：
 
-- 主持方负责 Spec/Plan/监督/独立 Verify，其他工具的真实桌面 Exec。
-- plan.coordinator=codex/zcode/workbuddy（缺省 codex）；顶层 engine=zcode/workbuddy 作默认。**提示词 executor=both，不等于 plan.engine=both。**
-- tasks 有 id、prompt、files、acceptance、dependsOn，可覆写 engine；concurrency 默认 2。
-- 当前执行适配只有 ZCode/WorkBuddy，**没有 Codex Exec 适配器**。Codex 主持可混排两款；ZCode 主持只能派 WorkBuddy；WorkBuddy 主持只能派 ZCode。“其余工具”不等于能派 Codex 桌面。
-- coordinator 与任务 engine 不能相同，混排不宜设顶层 model，防止跨工具误用。
-- 相交归属串行，前置 verified 才启动依赖，全局可变状态另协调。
-
-### 4.2 状态、证据、恢复
-
-- queued→running→needs_user→exec_done→verified；异常 failed/unknown/blocked/cancelled，中间 creating/dispatching。
-- needs_user 定位原生审批/提问并出回顾卡；主聊天只报变化，普通轮询不抢用户当前选择。
-- **unknown 不重派**，先查原 session；恢复复用 sessionId，显示错用 open，修正消息新 requestId。
-- 可见性三要素：正确项目、正确选中 session、正文“协作任务包：包ID”；写 .work-together/<id>.visibility.json。旧 smoke 不算新任务证据。
-- verify 检查状态/可见性/归属/非空证据文件，不证明证据文字真实，主持方必须亲自检查产物和测试。
-- 指纹检测归属外增/改/删，发现阻断，可能退出码 2；事后检测，主持方迟写文件也触发。
-- 同项目一个 runner.lock；干净结束释放，未知保留恢复入口。--resume 检查计划路径、engine、coordinator、计划哈希，不静默换计划。
-- state.json 是当前依据，review.md 会过期；证据/控制/日志放 .work-together，避免污染指纹。
-- 依赖等待时 runner 可驻留，全部交回后也可能先退出，由主持方离线登记 verified。runner 退出不代表全部验收。
-
-### 4.3 生命周期与能力边界
-
-Windows 历史现场版本：ZCode 3.15.3（CLI 0.16.9）、WorkBuddy AI 5.7.6。版本相关本机私有 renderer/CDP 桥，非稳定 API；升级先 doctor、小冒烟。未修改 app.asar/数据库，不复制密钥，不把 CLI 冒称桌面。
-
-仅本机端口 ZCode=19331、WorkBuddy=19332。Windows 健康实例复用；未开端口 CloseMainWindow，默认等 5 秒，再按**相同可执行文件路径**终止剩余托盘进程，重启等页面就绪，不能按名字误杀其他安装。
-
-当前项目活跃任务、或所选应用是仍持锁主持方时默认保护；状态读不出保守报错。明确中断才 -ForceRestart，随后查旧会话恢复。保护范围是**脚本当前项目**，不是全局所有项目探测。
-
-skill 不会在主持回合结束后自行唤醒，跨回合通知需宿主。总计划用 PLAN.md/STATUS.md，外部原生待办，未替换 Codex UI。完全访问只影响审批，不扩大业务范围。
-
-Mac 已有 .app URL/路径推导、start-desktops.sh、最小 lock 保护；真机桥/SDK/fiber/--open-workspace/bundle 名均未知。默认猜 /Applications/ZCode.app、/Applications/WorkBuddyAI.app，可覆写。正式任务前按 references/macos.md 验证。
-
-## 5. 证据地图
-
-本次复查持久 state、安装一致性和测试，下列桌面结果来自历史。原始截图/会话/日志只本地，不推远程。
-
-| .local 下项目（前缀 E:\code\work-together\.local） | 历史结果 / 本次 state 核对 |
+| .local 子目录 | 登记状态 |
 |---|---|
-| smoke-zcode | alpha/beta verified；并发重叠 125831 ms |
-| smoke-workbuddy-v2 | alpha/beta verified；并发重叠 52232 ms |
-| smoke-workbuddy | 首轮共享记忆越界样本，两个 exec_done；**不是新待办，不是全部通过** |
-| visibility-zcode / visibility-workbuddy | visible-check verified；历史逐字节 VISIBLE_OK 加 LF |
-| smoke-coordinator-zcode | coordinator=zcode，WorkBuddy alpha/beta verified；模型 error 后同会话修复 |
-| smoke-mixed | coordinator=codex，zside→ZCode、wbside→WorkBuddy verified，15B/19B，待办核查通过 |
-| smoke-coordinator-workbuddy | coordinator=workbuddy，zexec→ZCode verified，36B、两轮独立验收、Todo、无越界 |
-| proofs | 截图/模型权限快照 |
-| installed-skill-before-v02 | 旧版备份，不要覆盖现版本 |
+| smoke-zcode、smoke-workbuddy-v2 | 各 alpha/beta verified |
+| smoke-workbuddy | alpha/beta exec_done，历史越界样例，不是新待办或完整通过 |
+| visibility-zcode、visibility-workbuddy | 各 visible-check verified |
+| smoke-coordinator-zcode | alpha/beta verified |
+| smoke-mixed | zside/wbside verified |
+| smoke-coordinator-workbuddy | zexec verified |
 
-每项目 .work-together/state.json 存 sessionId/证据路径，不把个人会话 ID 抄进公开交接。完整叙述在 docs/verification.md；v0.4 早期“WorkBuddy 主持未验证”由后文“验收三”补足，目前三种主持均闭环。
+会话、截图、日志、账号元数据和原始发布响应只留本地，不把个人会话 ID 或密钥抄进公开文档。
 
-## 6. 文件入口
+## 4. 文件入口与发布
 
-相对路径以 E:\code\work-together 为根。
-
-| 文件 | 用途 |
+| 文件（相对项目根） | 用途 |
 |---|---|
-| prompts/ai-collaboration.md | 中文启动/恢复提示词 |
-| skills/work-together/SKILL.md | 入口、版本/SkillHub 元数据、职责 |
-| skills/work-together/scripts/workflow.mjs | 调度与 doctor/run/status/watch/open/verify/cancel |
-| 同目录 core.mjs | 计划/依赖/归属/摘要/指纹 |
-| 同目录 cdp.mjs | 桥接会话、发送、快照、导航、取消、平台路径 |
-| 同目录 model-policy.mjs | 模型/权限/费率 |
-| 同目录 start-desktops.ps1、desktop-lifecycle.ps1 | Windows 启动/保护/就绪 |
-| 同目录 start-desktops.sh | 实验性 Mac 启动 |
-| skills/work-together/references/operations.md | 速查、协议、headless 分工、恢复 |
-| 同目录 faq.md、walkthrough.md、macos.md | 排障、失败恢复实战、Mac 清单 |
-| skills/work-together/examples | plan.example.json、SPEC.template.md |
-| tests/*.test.mjs、tests/desktop-startup.ps1 | 23 Node 测试，启动用例内含 20 场景 |
-| docs/verification.md | 历史现场验收 |
-| SPEC/PLAN/README/HANDOFF.md | 初始合同、计划、入口、当前交接 |
+| README.md | 安装、矩阵、文档地图 |
+| skills/work-together/SKILL.md | Skill 入口、版本和工作流 |
+| skills/work-together/scripts/workflow.mjs | doctor/run/status/watch/open/verify/cancel/takeover |
+| 同目录 core.mjs、executors.mjs、model-policy.mjs | 计划/归属/指纹、候选/停止确认、模型/费率 |
+| 同目录 cdp.mjs、qoder.mjs | 桌面桥、会话、导航和区域协议 |
+| 同目录 start-desktops.ps1、desktop-lifecycle.ps1、start-desktops.sh | Windows 生命周期、实验性 Mac 启动 |
+| skills/work-together/references/、examples/ | 运行说明、FAQ、样例、Mac 清单及模板 |
+| tests/*.test.mjs、tests/desktop-startup.ps1 | 38 个 Node 测试，生命周期内部 27 场景 |
+| docs/verification*.md | 历史现场证据 |
+| prompts/ai-collaboration.md、SPEC.md、PLAN.md | 提示词、初始合同和交付勾选表 |
 
-## 7. 经验、踩坑与待闭环
+改源 skills/work-together，验证后再同步安装，不只改安装副本。根/Skill 版本一致。本轮仅改交接，无需升级 Skill 版本或同步安装。
 
-1. 后台成功不等于桌面可见，靠导航与三要素；显示失败重派会双执行。
-2. WorkBuddy 修正轮新 requestId，复用会缓存吞掉；模型瞬时 error 也已同会话修复。
-3. 创建即绑定模型/权限，Flash 显式 reasoningLevel；仅明确 x0.00 免费，区分同名收费区域。
-4. 共享记忆/日志主持方统一写，执行者仅归属。主持辅助文件提前就位或放 .work-together。
-5. PS5.1 的 @() 可能包装嵌套数组，.NET file LocalPath 含查询串，要先剥离。PS1 保留 UTF-8 BOM，生命周期双通道回归。
-6. codex exec 回收分离 runner，WMI 成功也可能消失；WorkBuddy 策略层拦 WMI，自有后台机制可能撞用户 runner.lock。由能承载后台的调用方/交互宿主启动，headless 主持只写计划、监控、验收。
-7. 历史 MSYS 中 Start-Process -WindowStyle Hidden 出现 127，不泛化为 Windows 一律失败；用合适宿主，不反复绕沙箱策略。
-8. 多层转义曾使 Desktop.create cwd 丢分隔符，用 argv/结构化参数，node -e 首个额外参数 argv[1]；含空格 Start-Process 参数正确引用。
-9. cancel 送达不等于已停，桌面确认才释放归属；真实破坏性 cancel/失联演练仍缺。
-10. **本次新发现**：cross-platform.test.mjs 直接调用 bash。默认命中 C:\WINDOWS\system32\bash.exe（另有 WindowsApps 入口），bash -n 15 秒超时。临时优先 Git Bash 后 23 全过，未改测试或全局 PATH。
-11. **Mac 全测边界待改**：“非 darwin 拒绝”用例未按宿主跳过，实际执行启动器且预期拒绝。Mac 全量 npm test 前先审查，URL 纯逻辑不证明现场可用。
-12. GitHub TLS 曾用仓库局部 schannel 修复，Gitee 空仓库先推后公开。双推前一失败中断后续，两边 SHA 单独核对。SkillHub pending 不等于过审。
-13. 微信未读、宿主唤醒未实现、Mac 未真机如实留缺口，历史通过不代表当前在线。
+GitHub：<https://github.com/icecolaa/work-together>；Gitee：<https://gitee.com/ice-colaa/work-together>。origin fetch 为 GitHub，push 顺序 Gitee→GitHub；推后分别核对两端 SHA。本轮未提交/推送。
 
-## 8. 新窗口可复制命令
+SkillHub：<https://skillhub.cn/skills/user_5dea5c46/work-together>。旧交接记录 v1.3.1 提交待审、v1.5.0 发布操作；本轮未查线上，不推断当前 latest/审核。发布前先查账号、审核、版本，避免重复提交；发布规则以当时实时资料为准。quick_validate.py 只接受 Codex 核心字段，不能用它直接拒绝 SkillHub 扩展字段，历史校验通过不代替当前检查。
 
-### 8.1 核对与测试（不启动桌面）
+## 5. 继续工作命令
+
+核对与测试不启动桌面：
 
 ~~~powershell
 Set-Location 'E:\code\work-together'
 git status --short
 git log -3 --oneline
+npm test
 
-# 临时优先 Git Bash，结束恢复 PATH
-$originalPath = $env:Path
-try {
-  $env:Path = 'C:\Program Files\Git\bin;' + $originalPath
-  npm test                       # 本次 23 pass
-} finally { $env:Path = $originalPath }
-
-# PS5.1：一个 Node 用例，内部 20 场景
+# 需要单独核对 PS5.1 时运行
 $env:WT_TEST_POWERSHELL = 'C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe'
 try { node --test tests/startup.test.mjs }
 finally { Remove-Item Env:WT_TEST_POWERSHELL }
 ~~~
 
-### 8.2 用户要真实协作时
-
-在**真实任务根目录**查原 Spec/计划/state/修改，决定新任务或恢复，不在源码仓库重复派发旧 smoke。以下 Codex 主持为例，当前交接未执行；run/open/verify/resume 属不同阶段，非无条件顺序运行。
+真实协作先到任务根目录检查已有 Spec/plan/state/改动，决定新任务或恢复；不要在源码仓库重复派发旧 smoke。以下是不同阶段参考，不应无条件依次执行：
 
 ~~~powershell
 $skill = 'C:/Users/lenovo/.codex/skills/work-together'
 $runner = "$skill/scripts/workflow.mjs"
+# 按当前聊天指定主持方，只启动本次所需桌面
+powershell -NoProfile -ExecutionPolicy Bypass -File "$skill/scripts/start-desktops.ps1" -Engine auto -Coordinator codex
+node $runner doctor qoder-global
 
-# 仅启动所需执行器
-powershell -NoProfile -ExecutionPolicy Bypass -File "$skill/scripts/start-desktops.ps1" -Engine both
-node $runner doctor zcode
-node $runner doctor workbuddy
-
-# Spec/plan/辅助材料先就位
+# 计划/Spec/辅助材料先就位，runner 交给可承载后台进程的宿主启动
 New-Item -ItemType Directory -Force .work-together | Out-Null
 Start-Process node -ArgumentList @($runner,'run','plan.json') -WorkingDirectory (Get-Location).Path -WindowStyle Hidden -RedirectStandardOutput '.work-together/runner.out.log' -RedirectStandardError '.work-together/runner.err.log'
 node $runner status
 node $runner watch
 
-# 显示错只定位原会话
+# 按实际阶段选择：显示修复 / 独立验收登记 / 原计划恢复
 node $runner open draft-a
-
-# 真独立验收后，先写真实证据再登记
 node $runner verify draft-a .work-together/draft-a.verify.md
-
-# 确认旧 runner 退出、先查原 session，再用原计划恢复
 node $runner run plan.json --resume
+
+# 旧调度器退出后，在目标客户端聊天内按需接管
+node $runner takeover qoder-global
 ~~~
 
-主持持续读取 watch/status，不能启动即结束。最小混排计划：
+run/resume 不与旧 runner 并行；验收证据须来自主持方真实核对。unknown 查原会话，cancel 送达不等于已停。headless 宿主可能回收分离进程，应由支持后台运行的调用方启动，不反复绕过进程策略。
 
-~~~json
-{
-  "coordinator": "codex",
-  "engine": "zcode",
-  "concurrency": 2,
-  "spec": "SPEC.md",
-  "tasks": [
-    {"id":"draft-a","files":["drafts/a.md"],"dependsOn":[],"prompt":"按 Spec 写第一篇草稿，不发布。","acceptance":["内容符合 Spec，文件可打开"]},
-    {"id":"draft-b","engine":"workbuddy","files":["drafts/b.md"],"dependsOn":[],"prompt":"按 Spec 写第二篇草稿，不发布。","acceptance":["内容符合 Spec，文件可打开"]}
-  ]
-}
-~~~
+## 6. 后续候选与核对发现
 
-已知安装路径：ZCode 为 C:\Users\lenovo\AppData\Local\Programs\ZCode\ZCode.exe，WorkBuddy 为 E:\workbuddy\WorkBuddyAI\WorkBuddyAI.exe。升级/迁移重查，支持 -ZCodePath/-WorkBuddyPath。端口关闭不证明登录失效。
+1. **文档一致性**：README 矩阵允许同品牌另一地区执行，与整族排除不符；SKILL.md 新手引导重复，历史版本提示未充分反映 v1.4.0 五客户端验证；SPEC/PLAN、提示词和部分运行说明有早期 Codex 专属用词。修订时保留历史合同与现功能的区别。本轮仅更新 HANDOFF。
+2. **接管后派发边界复核**：正常 selectExecutor 用 state.coordinator，但 workflow 的运行失败后候选预判仍传 plan.coordinator，fallback=false 分支也未像正常候选选择一样重新过滤现任主持方同族。现有接管测试不代表覆盖这些分支；修改前补针对性回归、明确预期。
+3. **现场故障/接管演练**：用户允许中断的隔离任务中补 cancel、失联、停止确认、恢复及 takeover，核对原会话、归属和不重派；不声称完成真实额度耗尽演练。
+4. **Mac 与主持覆盖**：按 macos.md 真机验证；补 Qoder 双区、WorkBuddy 国内版聊天主持的完整现场记录，完成前保留边界。
+5. **发布/升级按需**：SkillHub 审核/latest 实时查询，桌面升级先 doctor 和小任务。本轮未发布、重启应用。
+6. **可选增强**：跨回合宿主通知、worktree 隔离、证据自动归档未承诺实现，不当作当前能力。
 
-### 8.3 修改、安装、发布
-
-改源 skills/work-together，验证再同步安装，不只改安装副本。早期 quick_validate.py 通过在加入 SkillHub 扩展字段前；当前兼容性需实际确认，不沿用旧结论当 v1.3.0 当前验证。根/skill 版本对齐。
-
-- GitHub：https://github.com/icecolaa/work-together
-- Gitee：https://gitee.com/ice-colaa/work-together
-
-已有公开双远程迭代授权；本轮只写交接，未提交/推送。确需同步先看 diff，勿 add 不明材料。.gitignore 忽略 .local、.work-together、.env、.workbuddy-ai 等；日志/截图/会话/密钥只本地。
-
-本机历史用忽略目录内 .local/git-credential.cjs，从 GITHUB_TOKEN/GITEE_OPEN_API 环境给 Git helper 供凭据；不打印值、不写进文档/远程。新环境用正规登录，不复制本机密钥。
-
-~~~powershell
-# 确需同步才执行，本轮未执行
-# git add HANDOFF.md
-# git commit -m 'docs: 更新完整任务交接与验证基线'
-# git push origin main
-
-# 双推后分别核对
-git rev-parse HEAD
-git ls-remote https://gitee.com/ice-colaa/work-together.git refs/heads/main
-git ls-remote https://github.com/icecolaa/work-together.git refs/heads/main
-~~~
-
-## 9. 下一步计划（候选，按触发条件）
-
-1. **当前交付**：只交付本文件，新窗口依用户指令继续；HANDOFF 未提交，需远程同步时单独提交。
-2. **测试可移植性**：继续代码时优先让 Bash 可配置/正确选择，解决 WSL 入口超时；darwin 的“非 darwin 拒绝”用例加平台边界。保持 Windows 23 项和 PS5.1 场景通过。
-3. **术语统一**：SPEC/PLAN 初始 Codex 表述、skill/operations 的“经 Codex 验收”“共享日志由 Codex 写”“[Codex/包ID]”等旧词应改主持方。代码已按 hostLabel；验收文档旧未验证句与后文验收三消歧，不能据旧词回退功能。
-4. **Mac 真机**：真实 Mac、两款登录应用，按 references/macos.md 从启动/doctor/单包/可见性/验收到混排记录；先审查测试边界，完成前继续实验性。
-5. **SkillHub**：用户要发布时查审核/latest、v1.3.0 是否已提交，避免因旧 pending 重复发；版本/文档/安装同步。
-6. **升级巡检**：桌面升级先 doctor、小任务，再业务并行。
-7. **真实故障演练**：用户明确允许中断的隔离样例做 cancel/失联/恢复，核对原会话、停止、指纹、不重派。模型 error→同会话修复不等于这些演练。
-8. **可选增强**：宿主跨回合通知、worktree 隔离、证据归档脚本化，均未承诺实现。
-
-交接标准：只读本文能理解意图、代码/远程/安装、历史与当前验证差异、限制、复现和后续优先级，无需翻长聊天。新代码/环境变化以现场为准更新本文。
+微信原始参考曾被验证页挡住，未取得正文，不声称据此补齐功能。旧 Bash 可移植性和 darwin 测试判断问题已解决，不再作为下一步。
