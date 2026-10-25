@@ -2,22 +2,26 @@
 name: work-together
 description: 当用户要求 Codex、ZCode、Qoder 或 WorkBuddy 跨工具协作、在真实桌面中并行处理同一项目时使用。当前聊天负责规划与独立验收，ZCode / Qoder / WorkBuddy 桌面负责执行，提供文件归属调度、进度跟踪和原会话恢复。仅在当前聊天内部拆分任务或调用子代理时不使用。
 slug: work-together
-version: 1.6.1
+version: 1.6.2
 displayName: Work Together · 跨工具桌面协作
-summary: Codex、ZCode、Qoder、WorkBuddy 六款客户端任一聊天皆可主持：拆包规划、按文件归属调度到其他工具的真实桌面、跟踪待办并逐包独立验收；异常复用原会话恢复，主持方失效可接管。Windows 五级候选按本机预检判定，macOS 实验性。
+summary: 像「老板带员工」一样跨工具协作——你的聊天当老板：拆活、定边界、验收；其他 AI 工具的桌面当员工干活，每个员工只动自己的文件。员工没额度自动换下一个，老板不在可由员工接管收尾。Windows 已现场验证；macOS 提供适配、首次使用按清单验证。
 tags: [collaboration, multi-agent, desktop-automation, codex, zcode, qoder, workbuddy]
 homepage: https://github.com/icecolaa/work-together
 ---
 
 # Work Together
 
-让当前聊天担任主持方，把独立任务包交给其他工具的真实桌面会话执行。你负责 Spec（目标与边界）、Plan（任务与依赖）和 Verify（独立验收）；执行器负责 Exec。交付应包含实际产物、逐条验收证据和未解决事项。
+把你的 AI 聊天当成「老板」，把其他 AI 工具当成「员工」：**老板**（当前聊天）负责拆解任务、划定边界、验收成果；**员工**（其他工具的真实桌面会话）负责具体干活。Codex、ZCode、Qoder、WorkBuddy 六款客户端，任何一款的聊天都能当老板；哪个员工没额度或不可用，就按顺序自动换下一个。配置里「老板」写作 `coordinator`，「员工」写作 `engine`——后文沿用这两个术语。
+
+老板的工作分三步：Spec（目标与边界）、Plan（任务与依赖）、Verify（独立验收）；员工负责 Exec。每个员工只动分给自己的文件（工位隔离，越界会被检测拦下）；干完了必须老板亲自验收才算数。老板没额度或失联了，员工还能接管老板的活继续收尾（接管）。
+
+新手不需要先读完全部文档：拷贝 `examples/` 里的 plan 与 SPEC 模板，照 `references/walkthrough.md` 的端到端样例执行即可。额度不足、模型不可选或桌面不可用时按五级候选自动切换；任务卡住时按症状查 `references/faq.md`（桌面不可见、验收退出码 2、连接断开、接管与自验等），恢复命令集中在 operations.md 的速查表。Windows 五款客户端已按真实任务现场验证并逐包独立验收；macOS 适配已提供，首次使用前按 `references/macos.md` 清单验证即可。
 
 适合跨模块改动、独立文稿或其他能按文件拆分的项目任务：执行过程在真实桌面可见，前置包验收后才放行依赖，审批或提问集中给出介入卡。单文件小改动、必须同时写同一文件的工作不必强行并行。
 
 第一次使用不需要先读完全部文档：拷贝 `examples/` 里的 plan 与 SPEC 模板，照 `references/walkthrough.md` 的端到端样例执行即可。额度不足、模型不可选或桌面不可用时按五级候选自动切换；任务卡住时按症状查 `references/faq.md`（桌面不可见、验收退出码 2、连接断开、接管与自验等），恢复命令集中在 operations.md 的速查表，不用通读全部文档。Windows 五款客户端已按真实任务现场验证并逐包独立验收；macOS 适配已提供，首次使用前按 `references/macos.md` 清单验证即可。
 
-在任何一款客户端（Codex / ZCode / Qoder / WorkBuddy）的聊天中都可这样开始（项目目录使用当前工作目录，主持方=当前聊天）：
+在任何一款客户端（Codex / ZCode / Qoder / WorkBuddy）的聊天中都可这样开始（项目目录使用当前工作目录，你就是老板）：
 
 > 使用 work-together，coordinator=当前聊天（如 zcode），executor=auto。先检查项目现状，把目标拆成互不重叠的任务包，写清文件归属和验收条件。按指定优先级选择可用的桌面执行器（自动排除主持方同族）；缺额度或不可用时自动切换，你持续跟进并独立验收，最后交付产物和证据。
 
