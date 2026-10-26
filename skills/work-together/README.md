@@ -1,6 +1,16 @@
 # Work Together · 跨工具桌面协作
 
-主持聊天管理 Spec / Plan / Verify，桌面助手执行 Exec。v1.5.0 支持主持方接管（takeover + 自验登记）；v1.4.0 起默认 `engine=auto`，优先顺序为 ZCode `GLM-5.3-FlashX` → Qoder 国际版免费 DeepSeek → Qoder 国内版免费 DeepSeek → WorkBuddy 国际版免费 DeepSeek → WorkBuddy 国内版免费工具模型。缺额度或不可用时切换，禁止收费回退。
+把当前聊天当老板，其他工具的桌面会话当员工：老板写订单、排班分活、检查交货，员工各做自己的文件并分享发现。新手直接本地用，不需要 Gitee 账号或聊天平台。
+
+第一次可以直接说：
+
+> 用 work-together 完成【你的目标】。你当老板，先检查项目，准备做事清单并给员工分活，交货后亲自检查和汇总。先本地完成，不接 Gitee，不发布、不推送。
+
+订单是需求与边界（Spec），排班表是任务规划（Plan），员工干活是执行（Exec），老板检查实物是独立验收（Verify）。能独立干的活一起做，要用前一份成果的就排后面；员工说做完了，还得老板检查才算数。团队模式的 `collect` 像把合格成果装成一箱，再检查能否一起用，只汇总到本地集成分支。
+
+老板负责检查环境和准备配置，用户按需完成安装、登录及业务选择。先读 [SKILL.md 的入门说明](SKILL.md)，多员工用 [本地团队说明](references/team.md)；需要线上任务卡与交付窗口时，再选配 [Gitee](references/gitee.md)。
+
+下面是供老板执行的技术速查。默认 `engine=auto`，按 ZCode → Qoder 国际/国内版 → WorkBuddy 国际/国内版顺序检查免费资格；精确模型与当前费率要求以 SKILL.md 为准。缺额度或不可用时按规则切换，禁止收费回退。
 
 先读 [SKILL.md](SKILL.md)。`workbuddy` 是 `workbuddy-global` 的兼容别名；显式 engine 从该项向后选择，`fallback=false` 固定单项。执行中切换必须确认原会话停止；`unknown` 不重派。执行者完成后仍需主持方独立验收。
 

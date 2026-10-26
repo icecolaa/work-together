@@ -1,6 +1,6 @@
 # HANDOFF — work-together 新窗口交接
 
-核对日期：2026-10-26（Asia/Shanghai）。当前源码 **v1.8.1**，包含本地 team 模式及 Gitee Issue/PR 自动化；1.8.1 仅优化老板/员工比喻与本地优先说明，不改变执行逻辑。功能提交 9e82c4e 已推送 Gitee、GitHub；SkillHub 1.8.1 已提交，versionId=462837，提交时审核/内容审核/安全扫描均 pending，不能当作已上架。历史过程查 Git 和 docs/verification*.md，发布记录见 docs/release-1.8.1.md。
+核对日期：2026-10-27（Asia/Shanghai）。当前源码 **v1.8.2**，本次仅更新文档：以老板写订单、排班分活、检查交货与装箱解释任务规划、依赖、独立验收和本地集成，加入一句话新手入口，校正旧提示词模型策略。执行逻辑未变，macOS 仍为实验性。SkillHub 1.8.1 已核实审核通过；1.8.2 已提交，versionId=464876，提交时审核/内容审核/安全扫描均 pending，不等于已上架。发布记录见 docs/release-1.8.2.md。
 
 ## 1. 已接受的目标与当前交付
 
