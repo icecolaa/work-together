@@ -1,10 +1,10 @@
 ---
 name: work-together
-description: 当用户要求 Codex、ZCode、Qoder 或 WorkBuddy 跨工具协作、在真实桌面中并行处理同一项目时使用。当前聊天负责规划与独立验收，ZCode / Qoder / WorkBuddy 桌面负责执行，提供文件归属调度、进度跟踪和原会话恢复。仅在当前聊天内部拆分任务或调用子代理时不使用。
+description: 当用户要求 Codex、ZCode、Qoder 或 WorkBuddy 跨工具或多原生会话协作、在真实桌面并行处理同一项目时使用。支持自动拆分、agent 认领与容量调度、本地消息、独立工作树、统一验收集成及可选 Gitee Issue/PR 同步。当前聊天负责目标与独立验收，桌面会话负责执行。仅在当前聊天内部拆分任务或调用子代理时不使用。
 slug: work-together
-version: 1.6.2
+version: 1.8.0
 displayName: Work Together · 跨工具桌面协作
-summary: 像「老板带员工」一样跨工具协作——你的聊天当老板：拆活、定边界、验收；其他 AI 工具的桌面当员工干活，每个员工只动自己的文件。员工没额度自动换下一个，老板不在可由员工接管收尾。Windows 已现场验证；macOS 提供适配、首次使用按清单验证。
+summary: 像「老板带员工」一样协作：当前聊天定目标并独立验收，ZCode、Qoder、WorkBuddy 桌面执行。支持自动拆分、多 agent 认领与容量调度、本地消息、独立 worktree 和统一集成，可选同步 Gitee Issue 与团队 PR。无需外部聊天平台；Windows 已验证，macOS 实验性。
 tags: [collaboration, multi-agent, desktop-automation, codex, zcode, qoder, workbuddy]
 homepage: https://github.com/icecolaa/work-together
 ---
@@ -19,7 +19,7 @@ homepage: https://github.com/icecolaa/work-together
 
 适合跨模块改动、独立文稿或其他能按文件拆分的项目任务：执行过程在真实桌面可见，前置包验收后才放行依赖，审批或提问集中给出介入卡。单文件小改动、必须同时写同一文件的工作不必强行并行。
 
-第一次使用不需要先读完全部文档：拷贝 `examples/` 里的 plan 与 SPEC 模板，照 `references/walkthrough.md` 的端到端样例执行即可。额度不足、模型不可选或桌面不可用时按五级候选自动切换；任务卡住时按症状查 `references/faq.md`（桌面不可见、验收退出码 2、连接断开、接管与自验等），恢复命令集中在 operations.md 的速查表，不用通读全部文档。Windows 五款客户端已按真实任务现场验证并逐包独立验收；macOS 适配已提供，首次使用前按 `references/macos.md` 清单验证即可。
+需要自动拆分、多 agent 容量分配、自主认领、共享发现或独立 worktree 时，使用本地 team 模式，先读 [团队模式说明](references/team.md)。由桌面规划器生成可校验的任务图，持久调度器负责认领与状态，agent 通过本地消息箱交流；支持 scope 内追加后续任务。主持方独立 verify 后 collect 到本地集成分支。默认保持本地；用户要求 Gitee 自动化时按 [Gitee 接入说明](references/gitee.md) 初始化，再使用 gitee sync/watch：每任务一个 Issue、每轮成果一个团队 PR，仅推送已验收的专用团队分支。不会自动合并 PR、修改目标分支、调整仓库权限或发送聊天消息。旧 workflow 模式仍可使用，同目录不混跑两种模式。
 
 在任何一款客户端（Codex / ZCode / Qoder / WorkBuddy）的聊天中都可这样开始（项目目录使用当前工作目录，你就是老板）：
 
@@ -47,7 +47,7 @@ homepage: https://github.com/icecolaa/work-together
 
 ## 环境与启动
 
-需要 Node.js >=22，以及已安装并登录的候选桌面。桥使用版本相关的本机私有接口，不改桌面数据库或 app.asar，不复制模型密钥。应用可启动、模型可选、任务可执行是不同检查；不能把预检成功写成整套工作流通过。既往验证涵盖 ZCode 3.15.3 / WorkBuddy AI 5.7.6；新版本及 Qoder、WorkBuddy 国内版需按实际 `doctor` 与 smoke 结果报告。
+需要 Node.js >=22.13，以及已安装并登录的候选桌面；team 使用内置 SQLite。桥使用版本相关的本机私有接口，不改桌面数据库或 app.asar，不复制模型密钥。应用可启动、模型可选、任务可执行是不同检查，预检成功不等于整套工作流通过。v1.4.0 已记录 Windows 五执行器现场验证，新版本以实际 doctor/smoke 为准；team 模式的验证范围另见团队说明。
 
 - Windows：`scripts/start-desktops.ps1 -Engine auto` 按五级列表启动/复用；也可只选任一 engine。脚本自动读取当前目录 plan.json 的 `coordinator`（或用 `-Coordinator` 指定），**跳过主持方同族桌面**（主持聊天就运行在其中，重启会杀掉会话）；显式 `-Engine <单项>` 视为覆盖。`both` 兼容旧双客户端，`all` 等同启动列表 `auto`。多候选启动会继续检查其余项，最后汇总失败；它只准备桌面，不派发模型请求。路径参数见 [运行说明](references/operations.md)。
 - 健康实例直接复用；缺调试端口的所选应用可能退出后重启。当前项目活跃任务及持锁主持方受保护；其他项目或人工会话需先检查，不能为预检中断活跃任务。仅用户明确允许中断后用 `-ForceRestart`，随后查询原会话恢复。

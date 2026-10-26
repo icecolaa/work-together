@@ -1,0 +1,7 @@
+{
+  "owner": "your-gitee-owner",
+  "repo": "your-repository",
+  "base": "main",
+  "tokenEnv": "GITEE_OPEN_API",
+  "closeIssuesOnMerge": true
+}

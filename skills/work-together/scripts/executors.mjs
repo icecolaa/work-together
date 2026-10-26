@@ -10,6 +10,12 @@ export function candidates(engine = 'auto', coordinator = 'codex', attempted = [
   return EXECUTOR_ORDER.slice(start).filter(e => family(e) !== family(coordinator) && !attempted.includes(e));
 }
 
+export function lockedCandidate(engine = 'auto', coordinator = 'codex') {
+  const candidate = engine === 'auto' ? candidates('auto', coordinator)[0] : normalizeEngine(engine);
+  if (!EXECUTOR_ORDER.includes(candidate) || family(candidate) === family(coordinator)) throw Error('锁定执行器不能与现任主持方同族');
+  return candidate;
+}
+
 export function stopped(snapshot) {
   return !snapshot.pending?.length && ['idle','completed','error','failed','cancelled','stopped'].includes(snapshot.state);
 }

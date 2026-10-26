@@ -10,8 +10,8 @@
 |---|---|
 | Codex 聊天 | 其余五款桌面全部可用 |
 | ZCode 聊天 | Qoder 双区 + WorkBuddy 双区（同族 ZCode 自动排除） |
-| Qoder 国际/国内版聊天 | ZCode + 另一地区 Qoder + WorkBuddy 双区 |
-| WorkBuddy 国际/国内版聊天 | ZCode + Qoder 双区 + 另一地区 WorkBuddy |
+| Qoder 国际/国内版聊天 | ZCode + WorkBuddy 双区（整个 Qoder 家族排除） |
+| WorkBuddy 国际/国内版聊天 | ZCode + Qoder 双区（整个 WorkBuddy 家族排除） |
 
 在哪个客户端的聊天里运行本 skill，谁就是主持方；派发自动排除主持方同族，主持方自己的桌面无需调试端口。会话侧栏标题、派发提示词与 STATUS.md 都使用主持方名称。
 
@@ -47,7 +47,7 @@ node <skill>/scripts/workflow.mjs takeover <执行器>
 
 ## 安装与启动
 
-把 `skills/work-together` 整个目录复制到主持工具的技能目录（Codex 为 `~/.codex/skills/work-together`，重开聊天后 `$work-together` 调用；其他客户端可直接给聊天 SKILL.md 绝对路径）。需要 Node.js >= 22，无 npm 运行依赖。
+把 `skills/work-together` 整个目录复制到主持工具的技能目录（Codex 为 `~/.codex/skills/work-together`，重开聊天后 `$work-together` 调用；其他客户端可直接给聊天 SKILL.md 绝对路径）。需要 Node.js >= 22.13，无 npm 运行依赖；team 使用 Node 内置 SQLite。
 
 ```powershell
 # 启动/复用桌面：auto 按五级列表，自动跳过主持方同族桌面（防误杀协调会话）
@@ -61,6 +61,43 @@ node <skill>/scripts/workflow.mjs status | watch | open <包ID> | verify <包ID>
 ```
 
 启动脚本自动读取当前目录 plan.json 的 `coordinator`（或 `-Coordinator` 指定）跳过主持方同族桌面；运行中持锁期间该应用拒绝自动重启。健康实例直接复用，缺调试端口的所选应用自动退出后重启。
+
+## 本地多 agent 团队（v1.7.0）
+
+新增可选 `team.mjs` 入口：桌面规划器按 Spec 自动拆分任务；同一客户端可配置多个 agent 实例，按容量均衡分配或自主认领。每次执行使用独立 worktree，SQLite 保存任务、认领租约、事件和消息；agent 可共享发现、请求协助并在 scope 内提议后续任务，主持方通过 `status/watch` 和团队 STATUS.md 查看当前任务、队列及阻塞。
+
+执行交回后由主持方独立 `verify`，再 `collect` 串行测试并合并到本地 `codex/team-*` 分支；依赖任务从已集成代码启动。主工作目录保持原样，默认本地运行，不依赖 Mattermost。v1.8.0 可选接入下面的 Gitee Issue/PR 同步。
+
+```powershell
+# 在目标 Git 仓库根目录；先提交需要共享的基线代码
+node <skill>/scripts/team.mjs init
+# 编辑 .work-together/team.config.json：scope、agents、checks
+node <skill>/scripts/team.mjs plan SPEC.md
+node <skill>/scripts/team.mjs run
+# 另一个终端或主持聊天
+node <skill>/scripts/team.mjs status
+node <skill>/scripts/team.mjs verify <任务ID> <独立验收证据>
+node <skill>/scripts/team.mjs collect
+```
+
+完整配置、后台启动、消息、动态任务、恢复与合并到主分支见 [团队模式说明](skills/work-together/references/team.md)。旧 workflow 模式保持兼容，同一目录两种模式不可混跑。Windows ZCode 已完成自动规划、双 agent、消息和三任务集成的 [真实验证](docs/verification-1.7.0.md)；其他客户端的 team 并发容量仍需实测。离线任务的 unknown 不会触发自动重派。
+
+## Gitee Issue / PR 自动化（v1.8.0）
+
+在 team 项目根目录配置一次即可使用现有 Gitee。每个任务映射一个 Issue，全部任务独立验收并集成后，推送专用团队分支并创建一个汇总 PR，避免依赖任务各自提 PR 重复带入前置改动。
+
+```powershell
+node <skill>/scripts/team.mjs gitee init
+node <skill>/scripts/team.mjs gitee doctor
+node <skill>/scripts/team.mjs gitee sync --dry-run
+node <skill>/scripts/team.mjs gitee sync
+# 可选常驻同步，每 60 秒对账一次
+node <skill>/scripts/team.mjs gitee watch --interval 60
+```
+
+初始化从 origin 的 Gitee push URL 识别仓库，API 令牌从现有 `GITEE_OPEN_API` 或指定环境变量读取；Git 推送使用正常 Git 凭据。配置与同步映射只留本地。请求应答丢失先按管理标记和 SHA 对账，不盲目重复创建；人工正文保留，远程分支被他人修改时不覆盖。只有远程 PR 确认合并且 SHA 匹配，才关闭对应 Issue；本地 `merged` 不等于远程 PR 已合并。
+
+不自动合并 PR、推送 main 或修改分支保护；使用轮询，无需公网 WebHook 回调。完整配置、恢复和发布轮次见 [Gitee 接入说明](skills/work-together/references/gitee.md)。
 
 ## 平台边界
 

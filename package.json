@@ -1,13 +1,14 @@
 {
   "name": "codex-work-together",
-  "version": "1.6.2",
+  "version": "1.8.0",
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13"
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "doctor": "node skills/work-together/scripts/workflow.mjs doctor"
+    "doctor": "node skills/work-together/scripts/workflow.mjs doctor",
+    "team": "node skills/work-together/scripts/team.mjs"
   }
 }

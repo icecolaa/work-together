@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 2,
+  "coordinator": "codex",
+  "strategy": "balanced",
+  "concurrency": 2,
+  "maxTasks": 24,
+  "leaseMs": 120000,
+  "spec": "SPEC.md",
+  "scope": ["src", "tests", "docs"],
+  "agents": [
+    {"id": "zcode-01", "engine": "zcode", "capacity": 1, "capabilities": ["coding"]},
+    {"id": "qoder-01", "engine": "qoder-global", "capacity": 1, "capabilities": ["coding"]}
+  ],
+  "checks": [{"command": "node", "args": ["--test"], "timeoutMs": 60000}]
+}

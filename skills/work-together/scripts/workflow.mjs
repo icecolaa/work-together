@@ -4,7 +4,7 @@ import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {Desktop} from './cdp.mjs';
 import {validatePlan,canStart,atomicJson,summarize,fingerprint,boundaryChanges} from './core.mjs';
-import {EXECUTOR_ORDER,normalizeEngine,candidates,selectExecutor,stopped,confirmStopped,family} from './executors.mjs';
+import {EXECUTOR_ORDER,normalizeEngine,candidates,selectExecutor,stopped,confirmStopped,family,lockedCandidate} from './executors.mjs';
 async function connect(engine,options={}) {
   engine=normalizeEngine(engine);
   const Type=engine.startsWith('qoder')?(await import('./qoder.mjs')).QoderDesktop:Desktop;
@@ -33,6 +33,7 @@ function render(state) {
   for(const j of Object.values(state.jobs).filter(j=>['needs_user','failed','unknown'].includes(j.status)))fs.writeFileSync(path.join(dir,j.id+'.review.md'),`# 本轮回顾：${j.id}\n\n状态：${j.status}\n\n会话：${j.sessionId}\n\n已完成：${j.summary||'见会话过程'}\n\n需要介入：${j.error||JSON.stringify(j.pending||[]).slice(0,2000)}\n\n下一步：处理后继续查询原会话，不重新派发。\n`);
 }
 async function main(){
+  if(fs.existsSync(stateFile)&&read(stateFile).mode==='team'&&cmd!=='doctor')throw Error('这是 team 运行记录，请使用 scripts/team.mjs 的对应命令');
   if(cmd==='doctor') { const engines=!args[0]||args[0]==='auto'?EXECUTOR_ORDER:[normalizeEngine(args[0])];for(const engine of engines){let d;try{if(!EXECUTOR_ORDER.includes(engine))throw Error('未知执行器');d=await connect(engine);console.log(`${engine}: desktop bridge OK; ${JSON.stringify(await d.resolveModel())}`);}catch(e){console.log(`${engine}: 不可用：${e.message}`);process.exitCode=1;}finally{d?.close();}}return; }
   if(cmd==='status'){const s=read(stateFile);console.log(JSON.stringify({engine:s.engine,coordinator:s.coordinator,coordinatorHistory:s.coordinatorHistory,modelPolicy:s.modelPolicy,jobs:Object.values(s.jobs).map(({id,status,sessionId,error,summary,visibility,engine,history,selfReviewed})=>({id,status,sessionId,error,summary,visibility,engine,history,selfReviewed}))},null,2));return;}
   if(cmd==='open'){const s=read(stateFile),j=s.jobs[args[0]];if(!j?.sessionId)throw Error('未知任务包，不能打开不存在的会话');const d=await connect(j.engine||s.engine);try{const proof=await showJob(d,j,`协作任务包：${j.id}`);console.log(JSON.stringify(proof,null,2));if(!proof.confirmed)process.exitCode=2;}finally{d.close();}return;}
@@ -116,7 +117,7 @@ async function main(){
           if(next==='failed'&&!j.cancelRequested&&plan.fallback!==false){
             await confirmStopped(d,root,j.sessionId,snap);
             const engine=normalizeEngine(j.engine);if(!j.attempted.includes(engine))j.attempted.push(engine);
-            if(candidates(task.engine||plan.engine,plan.coordinator,j.attempted).length){
+            if(candidates(task.engine||plan.engine,state.coordinator,j.attempted).length){
               j.history.push({engine,sessionId:j.sessionId,status:'failed',reason:j.error,summary:j.summary,stopped:true,at:new Date().toISOString()});
               console.log(`${j.id}: ${engine} 已停止，按优先级交接下一执行器`);
               Object.assign(j,{status:'queued',sessionId:null,visibility:null,error:undefined});save();
@@ -134,7 +135,7 @@ async function main(){
           const requested=task.engine||plan.engine;
           const probe=async engine=>{const desktop=await getDesktop(engine);desktop.modelPolicy=null;return {desktop,model:await desktop.resolveModel()};};
           let selection;
-          if(plan.fallback===false){const engine=normalizeEngine(requested==='auto'?candidates('auto',state.coordinator)[0]:requested);selection={engine,...await probe(engine),failures:[]};}
+          if(plan.fallback===false){const engine=lockedCandidate(requested,state.coordinator);selection={engine,...await probe(engine),failures:[]};}
           else selection=await selectExecutor({engine:requested,coordinator:state.coordinator,attempted:j.attempted,probe});
           for(const f of selection.failures){j.history.push(f);j.attempted.push(f.engine);}
           j.engine=selection.engine;j.modelPolicy=selection.model;state.modelPolicy[j.engine]=selection.model;d=selection.desktop;j.attempted.push(j.engine);save();
@@ -150,7 +151,7 @@ async function main(){
       }
       save();const jobs=Object.values(state.jobs);
       if(jobs.every(j=>['exec_done','verified','failed','cancelled','blocked'].includes(j.status))){state.boundaryViolations=boundaryChanges(state.baseline,fingerprint(root),plan.tasks,root);clean=true;console.log(jobs.map(j=>`${j.id}: ${j.status}`).join(' | '));if(jobs.some(j=>['failed','blocked'].includes(j.status)))process.exitCode=1;if(state.boundaryViolations.length){console.log('验收阻断：'+state.boundaryViolations.join(', '));process.exitCode=2;}if(jobs.some(j=>j.sessionId&&!j.visibility?.confirmed)){console.log('验收阻断：部分会话尚未确认桌面可见；使用 open 修复。');process.exitCode=2;}break;}
-      if(jobs.some(j=>['creating','dispatching','unknown'].includes(j.status))){console.log('执行结果未知，已保留原会话与锁；检查后 --resume，禁止重派。');break;}
+      if(jobs.some(j=>['creating','dispatching','unknown'].includes(j.status))&&!jobs.some(j=>['running','needs_user'].includes(j.status))){console.log('执行结果未知，已保留原会话与锁；检查后 --resume，禁止重派。');break;}
       await sleep(3000);
     }
   }finally{save();for(const desktop of Object.values(desktops))desktop.close();if(clean)fs.unlinkSync(lock);}

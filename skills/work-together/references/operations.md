@@ -1,5 +1,9 @@
 # 桌面运行协议
 
+自动拆分、多 agent 容量调度、认领、本地消息箱和 worktree 集成使用新增的 [team 模式](team.md)（Node >=22.13）。下文为保持兼容的旧 workflow 模式，同目录不可混跑。
+
+team 需要同步 Gitee Issue/PR 时，使用 [Gitee 接入说明](gitee.md) 的独立 sync/watch 命令；不将远程 Issue 状态直接当作本地任务验收。
+
 需要 Windows、Node.js >=22（原生 fetch/WebSocket），以及已安装并登录的候选执行器。v1.4.0 新增 Qoder 国际/国内版、WorkBuddy 国内版候选；历史桌面验证目标为 ZCode 3.15.3 / WorkBuddy AI 5.7.6，新候选按本机 doctor 和 smoke 的实际结果报告。macOS 为实验性，先读 [macos.md](macos.md)，使用其中的 Bash 启动方式。脚本从 CDP 主窗口调用现有 renderer 服务，不安装或复制模型密钥，不改 app.asar，不使用云端会话替代桌面。
 
 ## 命令速查
