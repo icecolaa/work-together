@@ -1,10 +1,12 @@
 # HANDOFF — work-together 新窗口交接
 
-核对日期：2026-10-26（Asia/Shanghai）。当前源码 **v1.8.0**，包含本地 team 模式及 Gitee Issue/PR 自动化。本文替代 v1.6.2 交接快照；历史过程查 Git 和 docs/verification*.md。功能源码尚未提交/推送；本轮仅向 Gitee 推送过隔离验证分支，测试 Issue/PR 已关闭且未合并；未发布 SkillHub。
+核对日期：2026-10-26（Asia/Shanghai）。当前源码 **v1.8.1**，包含本地 team 模式及 Gitee Issue/PR 自动化；1.8.1 仅优化老板/员工比喻与本地优先说明，不改变执行逻辑。功能提交 9e82c4e 已推送 Gitee、GitHub；SkillHub 1.8.1 已提交，versionId=462837，提交时审核/内容审核/安全扫描均 pending，不能当作已上架。历史过程查 Git 和 docs/verification*.md，发布记录见 docs/release-1.8.1.md。
 
 ## 1. 已接受的目标与当前交付
 
 用户要求自动拆分任务、给同一执行器或多个执行器分配多任务、agent 自主认领/共享发现、独立验证、合并团队成果，以及主持方展示各 agent 状态。选型已确定：**复用现有 Gitee，本地常驻调度服务 + SQLite 消息箱 + 独立 worktree，首版不接 Mattermost/Gitea**。
+
+对外概述继续使用“老板带员工”：老板拆活、分配并验收；员工在自己的桌面会话干活、分享发现。必须显眼说明新手或没有 Gitee 账号可直接本地使用，无需添加 Gitee 或聊天平台；Gitee 只是按需添加的线上任务清单和 PR 交付窗口。本地仍需 Git，但不等于需要注册 Gitee。
 
 v1.7.0 新增 scripts/team.mjs 入口，旧 workflow.mjs 的 run/verify/takeover 保持兼容；同一目录两种模式不能混跑。没有 Codex 桌面 Exec 适配器。
 
@@ -28,7 +30,7 @@ v1.7.0 新增 scripts/team.mjs 入口，旧 workflow.mjs 的 run/verify/takeover
 | 项目 / 分支 | E:\code\work-together / main |
 | 修改前 HEAD | 6d683f0424fe238b8eb8f3064c33e7882fe44651 |
 | 修改前工作树 | 研究文档 docs/multi-agent-feasibility.md 已存在为未跟踪文件，本轮保留并更新 |
-| 版本 | package.json、源 SKILL.md 均为 1.8.0 |
+| 版本 | package.json、源 SKILL.md 均为 1.8.1；相较 1.8.0 只改概述与说明 |
 | Node | 本机 v26.5.1；team 要求 >=22.13，使用 node:sqlite，无 npm 运行依赖 |
 | 自动化 | npm test **65/65 通过**，0 fail、0 skip；旧模式 38、team 15、Gitee 12；末尾目标分支保护与操作错误清理另有定向重跑 |
 | Windows 启动 | 全测内通过，内部 27 场景；本轮未重新单独跑 PS5.1，上一轮 v1.6.2 曾通过 |
@@ -37,9 +39,9 @@ v1.7.0 新增 scripts/team.mjs 入口，旧 workflow.mjs 的 run/verify/takeover
 | 并发观测 | 两任务事件区间重叠 80163 ms；不代表固定加速比或模型请求全程并行 |
 | 测试项目状态 | 三任务 merged，检查输出 SMOKE_CHECK_OK；主分支工作区干净、主目录没有产物；runner 已退出、锁已释放 |
 | Gitee 真实验证 | 复用 ice-colaa/work-together；成功创建并对账测试 Issue IKQIKS、PR #1，人工正文保留，远程差异仅一份测试文档，已关闭测试单，PR 未合并 |
-| 远程 / SkillHub | Gitee main 测试前后均为 6d683f0，独立测试分支保留追溯；功能源码与 GitHub 镜像未推送，SkillHub 未发布 |
+| 远程 / SkillHub | 隔离验证时 main 保持 6d683f0；随后功能 9e82c4e 已双推。1.8.0 提交 versionId=462820，用户补充文案后再提交 1.8.1 versionId=462837，均需以实时审核结果为准 |
 
-本机 Skill 安装目录为 C:\Users\lenovo\.codex\skills\work-together。v1.8.0 已同步全部 28 个源文件，SHA256 差异为 0；安装版 gitee watch --once 对账通过，测试 Issue/PR 保持 closed、未合并。临时投影的 Codex 核心校验、源 SkillHub 扩展元数据/版本一致性和文档链接检查均通过，不删除源扩展字段。
+本机 Skill 安装目录为 C:\Users\lenovo\.codex\skills\work-together。包内共 28 文件；v1.8.0 安装版 gitee watch --once 对账通过，测试 Issue/PR 保持 closed、未合并。1.8.1 的官方 CLI dry-run、临时投影 Codex 核心校验、版本一致性、入口链接及老板/员工/无需 Gitee 文案断言均通过，不删除源扩展字段；安装一致性以本轮最终 SHA256 核对为准。
 
 现场细节见 docs/verification-1.7.0.md；原生会话、令牌、消息原文、完整证据只在 .local/team-smoke-v17/.work-together，Git 忽略。不要把个人 sessionId/账号配置写入公开交接。
 
@@ -110,9 +112,9 @@ Gitee 任务同步在对应 team 项目根目录执行：gitee init → doctor �
 - .local 旧 state：smoke-zcode、smoke-workbuddy-v2、smoke-coordinator-zcode、smoke-mixed、smoke-coordinator-workbuddy 与 visibility 样例均登记 verified；smoke-workbuddy 为 exec_done 的历史越界样例，不是新待办。
 - 原 Bash/WSL 入口误选及 darwin 拒绝用例平台判断已在旧版修复，不再列待修。WT_TEST_BASH 仍可指定 Git Bash。
 - 改源 skills/work-together，验证后同步本机安装，根/Skill 版本一致。quick_validate.py 只认识 Codex 核心字段；临时投影验证核心字段，另核对 SkillHub 扩展元数据，不删源扩展字段。
-- origin fetch 为 GitHub，源码发布 push URL 顺序 Gitee→GitHub。推后分别核对两端 SHA。本轮只向 Gitee 直推独立验证分支，未推功能源码或 GitHub 镜像；Gitee 自动化只用精确 Gitee URL，不使用 origin 的多目标 push。
+- origin fetch 为 GitHub，源码发布 push URL 顺序 Gitee→GitHub。功能 9e82c4e 已双推，后续文案/发布记录继续双推并分别核对两端 SHA。Gitee 自动化本身只用精确 Gitee URL，不使用 origin 的多目标 push。
 - GitHub：https://github.com/icecolaa/work-together；Gitee：https://gitee.com/ice-colaa/work-together。
-- SkillHub：https://skillhub.cn/skills/user_5dea5c46/work-together。历史 pending/提交不代表当前 latest；发布前实时查状态及官方规则，避免重复提交。
+- SkillHub：https://skillhub.cn/skills/user_5dea5c46/work-together。1.8.0/1.8.1 已提交；提交前确认线上 approved latest 为 1.6.2。pending 不代表当前 latest，后续先查状态，不重复提交现有版本。
 - 微信原始参考曾被验证页阻挡，未取得正文，不声称据其补齐功能。日志/截图/令牌默认只留本地。
 
 ## 6. 后续边界与候选

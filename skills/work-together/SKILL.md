@@ -2,9 +2,9 @@
 name: work-together
 description: 当用户要求 Codex、ZCode、Qoder 或 WorkBuddy 跨工具或多原生会话协作、在真实桌面并行处理同一项目时使用。支持自动拆分、agent 认领与容量调度、本地消息、独立工作树、统一验收集成及可选 Gitee Issue/PR 同步。当前聊天负责目标与独立验收，桌面会话负责执行。仅在当前聊天内部拆分任务或调用子代理时不使用。
 slug: work-together
-version: 1.8.0
+version: 1.8.1
 displayName: Work Together · 跨工具桌面协作
-summary: 像「老板带员工」一样协作：当前聊天定目标并独立验收，ZCode、Qoder、WorkBuddy 桌面执行。支持自动拆分、多 agent 认领与容量调度、本地消息、独立 worktree 和统一集成，可选同步 Gitee Issue 与团队 PR。无需外部聊天平台；Windows 已验证，macOS 实验性。
+summary: 像「老板带员工」一样协作：老板拆任务、分活并验收，多名员工在各自桌面会话干活、分享发现、汇总成果。新手直接本地使用，不需要 Gitee 账号或聊天平台；需要线上任务记录和 PR 交付时，再选配 Gitee 自动同步。Windows 已验证，macOS 实验性。
 tags: [collaboration, multi-agent, desktop-automation, codex, zcode, qoder, workbuddy]
 homepage: https://github.com/icecolaa/work-together
 ---
@@ -15,11 +15,17 @@ homepage: https://github.com/icecolaa/work-together
 
 老板的工作分三步：Spec（目标与边界）、Plan（任务与依赖）、Verify（独立验收）；员工负责 Exec。每个员工只动分给自己的文件（工位隔离，越界会被检测拦下）；干完了必须老板亲自验收才算数。老板没额度或失联了，员工还能接管老板的活继续收尾（接管）。
 
-新手不需要先读完全部文档：拷贝 `examples/` 里的 plan 与 SPEC 模板，照 `references/walkthrough.md` 的端到端样例执行即可。额度不足、模型不可选或桌面不可用时按五级候选自动切换；任务卡住时按症状查 `references/faq.md`（桌面不可见、验收退出码 2、连接断开、接管与自验等），恢复命令集中在 operations.md 的速查表。Windows 五款客户端已按真实任务现场验证并逐包独立验收；macOS 适配已提供，首次使用前按 `references/macos.md` 清单验证即可。
+**多员工模式**：老板可以把一个大目标自动拆成小任务，给同一名员工排几件活，也可以让同一工具里的多名员工（独立会话）、不同工具的员工一起干活。员工按能力和空闲情况领取任务，只改自己负责的文件，可以通过本地消息箱分享发现、提出求助。老板随时查看每名员工在做什么、排着什么活、卡在哪里；验收后再把各自成果汇总。
+
+**新手直接本地用，不需要 Gitee。** 没有 Gitee 账号、暂时不想配置线上协作，都可以先让老板在本机带员工干活：拆任务、分配、共享发现、验收和汇总都在本地完成，也不需要 Mattermost 等聊天平台。多员工本地使用看 [团队模式说明](references/team.md)，其中会说明本地 Git 和桌面工具的准备要求。
+
+**Gitee 是可选的线上任务清单和交付窗口。** 老板需要把进度放到网上时再添加：每件活自动对应一张 Issue 任务卡，整轮通过验收的成果汇总成一个 PR，交给老板或仓库维护者评审。普通本地运行不会发布到 Gitee；需要时按 [Gitee 接入说明](references/gitee.md) 单独开启同步，不会自动合并 PR 或改动目标分支。
+
+不需要先读完全部文档：传统任务包流程可照 [端到端样例](references/walkthrough.md) 执行；额度不足、桌面不可用或任务卡住时，按症状查 [FAQ](references/faq.md)。Windows 五款执行器有传统流程现场验证，多员工本地模式另有 ZCode 验证；macOS 仍为实验性，首次使用先读 [macOS 清单](references/macos.md)。
 
 适合跨模块改动、独立文稿或其他能按文件拆分的项目任务：执行过程在真实桌面可见，前置包验收后才放行依赖，审批或提问集中给出介入卡。单文件小改动、必须同时写同一文件的工作不必强行并行。
 
-需要自动拆分、多 agent 容量分配、自主认领、共享发现或独立 worktree 时，使用本地 team 模式，先读 [团队模式说明](references/team.md)。由桌面规划器生成可校验的任务图，持久调度器负责认领与状态，agent 通过本地消息箱交流；支持 scope 内追加后续任务。主持方独立 verify 后 collect 到本地集成分支。默认保持本地；用户要求 Gitee 自动化时按 [Gitee 接入说明](references/gitee.md) 初始化，再使用 gitee sync/watch：每任务一个 Issue、每轮成果一个团队 PR，仅推送已验收的专用团队分支。不会自动合并 PR、修改目标分支、调整仓库权限或发送聊天消息。旧 workflow 模式仍可使用，同目录不混跑两种模式。
+技术配置中，多员工流程使用 `team` 模式：先读团队说明，老板确认目标、scope 和验收条件，桌面规划器返回经校验的任务图，再调度员工执行；独立 `verify` 后 `collect` 到本地集成分支。只有用户要求 Gitee 自动化时才使用 `gitee sync/watch`，仅发布已验收的专用团队分支。旧 `workflow` 任务包模式仍可使用，同一目录不混跑两种模式。
 
 在任何一款客户端（Codex / ZCode / Qoder / WorkBuddy）的聊天中都可这样开始（项目目录使用当前工作目录，你就是老板）：
 
